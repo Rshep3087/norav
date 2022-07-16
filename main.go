@@ -3,14 +3,22 @@ package main
 import (
 	"fmt"
 	"log"
+	"net/http"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
+
+type httpResp struct {
+	status int
+	err    error
+}
 
 type application struct {
 	name        string
 	url         string
 	description string
+	httpResp    httpResp
 }
 
 type model struct {
@@ -67,8 +75,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				m.selected[m.cursor] = struct{}{}
 			}
+
+		case "ctrl+t":
+			return m, checkServer(m.applications[m.cursor].url)
 		}
+
+	case statusMsg:
+		m.applications[m.cursor].httpResp.status = int(msg)
 	}
+
 	return m, nil
 }
 
@@ -86,13 +101,38 @@ func (m model) View() string {
 			checked = "x"
 		}
 
-		s += fmt.Sprintf("%s [%s] %s\n%s\n\n", cursor, checked, app.name, app.url)
+		s += fmt.Sprintf(
+			"%s [%s] %s status: %d\n%s\n\n",
+			cursor,
+			checked,
+			app.name,
+			app.httpResp.status,
+			app.url,
+		)
 	}
 
 	s += "\n Press q to quit.\n"
 
 	return s
 }
+
+func checkServer(url string) tea.Cmd {
+	return func() tea.Msg {
+		c := &http.Client{Timeout: 10 * time.Second}
+		res, err := c.Get(url)
+		if err != nil {
+			return errMsg{err}
+		}
+
+		return statusMsg(res.StatusCode)
+	}
+}
+
+type errMsg struct{ err error }
+
+func (e errMsg) Error() string { return e.err.Error() }
+
+type statusMsg int
 
 func main() {
 	p := tea.NewProgram(initialModel())
