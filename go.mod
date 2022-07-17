@@ -2,7 +2,10 @@ module github.com/rshep3087/homie
 
 go 1.18
 
-require github.com/charmbracelet/bubbletea v0.22.0
+require (
+	github.com/charmbracelet/bubbletea v0.22.0
+	github.com/charmbracelet/lipgloss v0.5.0
+)
 
 require (
 	github.com/containerd/console v1.0.3 // indirect

@@ -4,9 +4,38 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+)
+
+const (
+	columnWidth = 30
+)
+
+var (
+	subtle  = lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#383838"}
+	special = lipgloss.AdaptiveColor{Light: "#43BF6D", Dark: "#73F59F"}
+
+	appStyle = lipgloss.NewStyle().
+			MarginRight(2).
+			Height(4).
+			Width(columnWidth + 1)
+
+	listItem = lipgloss.NewStyle().PaddingLeft(2).Render
+
+	url = lipgloss.NewStyle().Foreground(special).Render
+
+	titleStyle = lipgloss.NewStyle().
+			MarginTop(1).
+			MarginBottom(2).
+			BorderStyle(lipgloss.NormalBorder()).
+			BorderBottom(true).
+			BorderForeground(subtle).
+			Align(lipgloss.Center).
+			Width(100)
 )
 
 type httpResp struct {
@@ -24,7 +53,6 @@ type application struct {
 type model struct {
 	applications []application
 	cursor       int
-	selected     map[int]struct{}
 }
 
 func initialModel() model {
@@ -41,7 +69,6 @@ func initialModel() model {
 				description: "home automation",
 			},
 		},
-		selected: make(map[int]struct{}),
 	}
 }
 
@@ -68,14 +95,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor++
 			}
 
-		case "enter", " ":
-			_, ok := m.selected[m.cursor]
-			if ok {
-				delete(m.selected, m.cursor)
-			} else {
-				m.selected[m.cursor] = struct{}{}
-			}
-
 		case "ctrl+t":
 			return m, checkServer(m.applications[m.cursor].url)
 		}
@@ -88,32 +107,41 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	s := "All Applications\n\n"
+	ui := strings.Builder{}
 
+	title := titleStyle.Render("Ryan's Homelab")
+
+	ui.WriteString(title)
+
+	var items []string
 	for i, app := range m.applications {
 		cursor := " " // no cursor
 		if m.cursor == i {
 			cursor = ">"
 		}
 
-		checked := " "
-		if _, ok := m.selected[i]; ok {
-			checked = "x"
-		}
-
-		s += fmt.Sprintf(
-			"%s [%s] %s status: %d\n%s\n\n",
+		s := fmt.Sprintf(
+			"\n%s %s status: %d\n%s\n\n",
 			cursor,
-			checked,
 			app.name,
 			app.httpResp.status,
-			app.url,
+			url(app.url),
 		)
+		items = append(items, listItem(s))
 	}
 
-	s += "\n Press q to quit.\n"
+	apps := lipgloss.JoinHorizontal(lipgloss.Top,
+		appStyle.Render(
+			lipgloss.JoinVertical(
+				lipgloss.Left,
+				items...,
+			),
+		),
+	)
 
-	return s
+	ui.WriteString(apps)
+
+	return ui.String()
 }
 
 func checkServer(url string) tea.Cmd {
