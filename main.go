@@ -165,12 +165,23 @@ func (m model) View() string {
 		}
 
 		s := fmt.Sprintf(
-			"\n%s %s status: %d\n%s\n\n",
+			"%s %s status: %d\n%s\n\n",
 			cursor,
 			app.Name,
 			app.httpResp.status,
 			url(app.URL),
 		)
+
+		if app.httpResp.status == 0 {
+			s = fmt.Sprintf(
+				"%s %s status: \n%s\n\n",
+				cursor,
+				app.Name,
+				url(app.URL),
+			)
+
+		}
+
 		items = append(items, listItem(s))
 	}
 
