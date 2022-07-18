@@ -1,0 +1,6 @@
+applications = [
+    { name = "Pi-hole", url = "http://192.168.2.49/admin/", description = "a dns sinkhole" },
+    { name = "Home Assistant", url = "http://192.168.2.49:8123/", description = "home automation" },
+]
+
+title = "Ryan's Homelab"

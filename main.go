@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -40,44 +42,47 @@ var (
 
 type httpResp struct {
 	status int
-	err    error
+}
+
+type config struct {
+	Title        string
+	Applications []application
 }
 
 type application struct {
-	name        string
-	url         string
-	description string
+	Name        string
+	URL         string
+	Description string
 	httpResp    httpResp
 }
 
 type model struct {
 	applications []application
 	cursor       int
+	title        string
 }
 
-func initialModel() model {
-	return model{
-		applications: []application{
-			{
-				name:        "Pi-hole",
-				url:         "http://192.168.2.49/admin/",
-				description: "a dns sinkhole",
-			},
-			{
-				name:        "Home Assistant",
-				url:         "http://192.168.2.49:8123/",
-				description: "home automation",
-			},
-		},
+func (m model) GetURLs() []string {
+	var urls []string
+	for _, v := range m.applications {
+		urls = append(urls, v.URL)
 	}
+
+	return urls
 }
 
 func (m model) Init() tea.Cmd {
-	return nil
+	return loadConfigFile
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case cfgMsg:
+		m.applications = msg.Applications
+		m.title = msg.Title
+
+		return m, checkServers(m.GetURLs()...)
+
 	case tea.KeyMsg:
 
 		switch msg.String() {
@@ -95,12 +100,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor++
 			}
 
-		case "ctrl+t":
-			return m, checkServer(m.applications[m.cursor].url)
+		case "ctrl+h":
+			return m, checkServers(m.GetURLs()...)
 		}
 
 	case statusMsg:
-		m.applications[m.cursor].httpResp.status = int(msg)
+		for i := range m.applications {
+			m.applications[i].httpResp.status = msg[m.applications[i].URL]
+		}
 	}
 
 	return m, nil
@@ -123,9 +130,9 @@ func (m model) View() string {
 		s := fmt.Sprintf(
 			"\n%s %s status: %d\n%s\n\n",
 			cursor,
-			app.name,
+			app.Name,
 			app.httpResp.status,
-			url(app.url),
+			url(app.URL),
 		)
 		items = append(items, listItem(s))
 	}
@@ -144,26 +151,43 @@ func (m model) View() string {
 	return ui.String()
 }
 
-func checkServer(url string) tea.Cmd {
+type cfgMsg config
+
+func loadConfigFile() tea.Msg {
+	f := ".homie.toml"
+	if _, err := os.Stat(f); err != nil {
+		log.Fatal(err)
+	}
+
+	var cfg config
+
+	_, err := toml.DecodeFile(f, &cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return cfgMsg(cfg)
+}
+
+func checkServers(urls ...string) tea.Cmd {
 	return func() tea.Msg {
 		c := &http.Client{Timeout: 10 * time.Second}
-		res, err := c.Get(url)
-		if err != nil {
-			return errMsg{err}
+
+		var msg = make(statusMsg)
+
+		for i := range urls {
+			res, _ := c.Get(urls[i])
+			msg[urls[i]] = res.StatusCode
 		}
 
-		return statusMsg(res.StatusCode)
+		return msg
 	}
 }
 
-type errMsg struct{ err error }
-
-func (e errMsg) Error() string { return e.err.Error() }
-
-type statusMsg int
+type statusMsg map[string]int
 
 func main() {
-	p := tea.NewProgram(initialModel())
+
+	p := tea.NewProgram(model{})
 	if err := p.Start(); err != nil {
 		log.Fatal(err)
 	}
