@@ -92,9 +92,11 @@ type model struct {
 	applications []application
 	cursor       int
 	metadata     metadata
+
+	client *http.Client
 }
 
-func (m model) GetURLs() []string {
+func (m model) GetAppURLs() []string {
 	var urls []string
 	for _, v := range m.applications {
 		urls = append(urls, v.URL)
@@ -104,17 +106,11 @@ func (m model) GetURLs() []string {
 }
 
 func (m model) Init() tea.Cmd {
-	return loadConfigFile
+	return m.checkServers()
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case cfgMsg:
-		m.applications = msg.Applications
-		m.metadata.title = msg.Title
-		m.metadata.status = "loading..."
-
-		return m, checkServers(m.GetURLs()...)
 
 	case tea.KeyMsg:
 
@@ -134,7 +130,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "ctrl+h":
-			return m, checkServers(m.GetURLs()...)
+			return m, m.checkServers()
 		}
 
 	case statusMsg:
@@ -153,7 +149,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) View() string {
 	ui := strings.Builder{}
 
-	title := titleStyle.Render("Ryan's Homelab")
+	title := titleStyle.Render(m.metadata.title)
 
 	ui.WriteString(title)
 
@@ -219,32 +215,29 @@ func (m model) View() string {
 	return ui.String()
 }
 
-type cfgMsg config
-
-func loadConfigFile() tea.Msg {
+func loadConfigFile() (config, error) {
 	f := ".homie.toml"
 	if _, err := os.Stat(f); err != nil {
-		log.Fatal(err)
+		return config{}, err
 	}
 
 	var cfg config
 
 	_, err := toml.DecodeFile(f, &cfg)
 	if err != nil {
-		log.Fatal(err)
+		return config{}, err
 	}
-	return cfgMsg(cfg)
+	return cfg, nil
 }
 
-func checkServers(urls ...string) tea.Cmd {
+func (m model) checkServers() tea.Cmd {
 	return func() tea.Msg {
-		c := &http.Client{Timeout: 10 * time.Second}
 
-		var msg = make(statusMsg)
+		msg := make(statusMsg)
 
-		for i := range urls {
-			res, _ := c.Get(urls[i])
-			msg[urls[i]] = res.StatusCode
+		for _, app := range m.applications {
+			res, _ := m.client.Get(app.URL)
+			msg[app.URL] = res.StatusCode
 		}
 
 		return msg
@@ -254,8 +247,29 @@ func checkServers(urls ...string) tea.Cmd {
 type statusMsg map[string]int
 
 func main() {
+	// ====================================================================
+	// load config file
+	cfg, err := loadConfigFile()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	p := tea.NewProgram(model{})
+	// ====================================================================
+	// clients
+	httpClient := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	initialModel := model{
+		applications: cfg.Applications,
+		metadata: metadata{
+			title:  cfg.Title,
+			status: "loading...",
+		},
+		client: httpClient,
+	}
+
+	p := tea.NewProgram(initialModel)
 	if err := p.Start(); err != nil {
 		log.Fatal(err)
 	}
