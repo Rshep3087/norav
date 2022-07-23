@@ -103,7 +103,7 @@ func (m model) View() string {
 	// title
 	{
 		title := titleStyle.
-			Background(lipgloss.Color("#FF5F87")).
+			Background(lipgloss.Color("12")).
 			Render(m.metadata.title)
 
 		ui.WriteString(title + "\n")
@@ -182,21 +182,26 @@ func loadConfigFile() (config, error) {
 	return cfg, nil
 }
 
+type statusMsg map[string]int
+
 func (m model) checkServers() tea.Cmd {
 	return func() tea.Msg {
-
 		msg := make(statusMsg)
 
 		for _, app := range m.applications {
-			res, _ := m.client.Get(app.URL)
+			log.Println("checking: ", app.URL)
+			res, err := m.client.Get(app.URL)
+			if err != nil {
+				msg[app.URL] = 0
+				continue
+			}
+			log.Println("res: ", res.StatusCode)
 			msg[app.URL] = res.StatusCode
 		}
 
 		return msg
 	}
 }
-
-type statusMsg map[string]int
 
 func main() {
 	// ====================================================================
@@ -212,6 +217,15 @@ func main() {
 		Timeout: 10 * time.Second,
 	}
 
+	if len(os.Getenv("DEBUG")) > 0 {
+		f, err := tea.LogToFile("debug.log", "debug")
+		if err != nil {
+			fmt.Println("fatal:", err)
+			os.Exit(1)
+		}
+		defer f.Close()
+	}
+
 	initialModel := model{
 		applications: cfg.Applications,
 		metadata: metadata{
@@ -220,6 +234,8 @@ func main() {
 		},
 		client: httpClient,
 	}
+
+	log.Println("starting homie...")
 
 	p := tea.NewProgram(initialModel)
 	if err := p.Start(); err != nil {
