@@ -15,56 +15,6 @@ import (
 
 const (
 	width = 96
-
-	columnWidth = 30
-)
-
-var (
-	subtle  = lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#383838"}
-	special = lipgloss.AdaptiveColor{Light: "#43BF6D", Dark: "#73F59F"}
-
-	appStyle = lipgloss.NewStyle().
-			MarginRight(2).
-			Height(4).
-			Width(columnWidth + 1)
-
-	listItem = lipgloss.NewStyle().PaddingLeft(2).Render
-
-	url = lipgloss.NewStyle().Foreground(special).Render
-
-	titleStyle = lipgloss.NewStyle().
-			MarginTop(1).
-			MarginBottom(2).
-			BorderStyle(lipgloss.NormalBorder()).
-			BorderBottom(true).
-			BorderForeground(subtle).
-			Align(lipgloss.Center).
-			Width(100)
-
-		// Status Bar.
-
-	statusNugget = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFDF5")).
-			Padding(0, 1)
-
-	statusBarStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.AdaptiveColor{Light: "#343433", Dark: "#C1C6B2"}).
-			Background(lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#353533"})
-
-	statusStyle = lipgloss.NewStyle().
-			Inherit(statusBarStyle).
-			Foreground(lipgloss.Color("#FFFDF5")).
-			Background(lipgloss.Color("#FF5F87")).
-			Padding(0, 1).
-			MarginRight(1)
-
-	encodingStyle = statusNugget.Copy().
-			Background(lipgloss.Color("#A550DF")).
-			Align(lipgloss.Right)
-
-	statusText = lipgloss.NewStyle().Inherit(statusBarStyle)
-
-	fishCakeStyle = statusNugget.Copy().Background(lipgloss.Color("#6124DF"))
 )
 
 type httpResp struct {
@@ -72,8 +22,8 @@ type httpResp struct {
 }
 
 type config struct {
-	Title        string
-	Applications []application
+	Title        string        `toml:"title"`
+	Applications []application `toml:"applications"`
 }
 
 type application struct {
@@ -92,9 +42,11 @@ type model struct {
 	applications []application
 	cursor       int
 	metadata     metadata
+
+	client *http.Client
 }
 
-func (m model) GetURLs() []string {
+func (m model) GetAppURLs() []string {
 	var urls []string
 	for _, v := range m.applications {
 		urls = append(urls, v.URL)
@@ -104,17 +56,11 @@ func (m model) GetURLs() []string {
 }
 
 func (m model) Init() tea.Cmd {
-	return loadConfigFile
+	return m.checkServers()
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case cfgMsg:
-		m.applications = msg.Applications
-		m.metadata.title = msg.Title
-		m.metadata.status = "loading..."
-
-		return m, checkServers(m.GetURLs()...)
 
 	case tea.KeyMsg:
 
@@ -134,7 +80,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "ctrl+h":
-			return m, checkServers(m.GetURLs()...)
+			return m, m.checkServers()
 		}
 
 	case statusMsg:
@@ -145,6 +91,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.metadata.status = fmt.Sprintf("%s might be having issues...", app.Name)
 			}
 		}
+		return m, m.checkServers()
 	}
 
 	return m, nil
@@ -153,9 +100,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) View() string {
 	ui := strings.Builder{}
 
-	title := titleStyle.Render("Ryan's Homelab")
+	// ==========================================================================
+	// title
+	{
+		title := titleStyle.
+			Background(lipgloss.Color("12")).
+			Render(m.metadata.title)
 
-	ui.WriteString(title)
+		ui.WriteString(title + "\n")
+	}
 
 	var items []string
 	for i, app := range m.applications {
@@ -165,97 +118,126 @@ func (m model) View() string {
 		}
 
 		s := fmt.Sprintf(
-			"%s %s status: %d\n%s\n\n",
+			"%s %s status: %d\n%s",
 			cursor,
 			app.Name,
 			app.httpResp.status,
 			url(app.URL),
 		)
 
-		if app.httpResp.status == 0 {
-			s = fmt.Sprintf(
-				"%s %s status: \n%s\n\n",
-				cursor,
-				app.Name,
-				url(app.URL),
-			)
-
-		}
+		// if app.httpResp.status == 0 {
+		// 	s = fmt.Sprintf(
+		// 		"%s %s status: \n%s\n\n",
+		// 		cursor,
+		// 		app.Name,
+		// 		url(app.URL),
+		// 	)
+		// }
 
 		items = append(items, listItem(s))
 	}
 
-	apps := lipgloss.JoinHorizontal(lipgloss.Top,
-		appStyle.Render(
-			lipgloss.JoinVertical(
-				lipgloss.Left,
-				items...,
-			),
-		),
+	apps := lipgloss.JoinVertical(
+		lipgloss.Top,
+		items...,
 	)
 
 	ui.WriteString(apps)
+
+	ui.WriteString("\n")
 
 	{
 		w := lipgloss.Width
 
 		statusKey := statusStyle.Render("STATUS")
-		encoding := encodingStyle.Render("UTF-8")
-		fishCake := fishCakeStyle.Render("🍥 Fish Cake")
+		encoding := encodingStyle.Render(time.Now().Format(time.UnixDate))
 		statusVal := statusText.Copy().
-			Width(width - w(statusKey) - w(encoding) - w(fishCake)).
+			Width(width - w(statusKey) - w(encoding)).
 			Render(m.metadata.status)
 
-		bar := lipgloss.JoinHorizontal(lipgloss.Top,
+		bar := lipgloss.JoinHorizontal(
+			lipgloss.Top,
 			statusKey,
 			statusVal,
 			encoding,
-			fishCake,
 		)
 
 		ui.WriteString(statusBarStyle.Width(width).Render(bar))
 	}
 
-	return ui.String()
+	return docStyle.Render(ui.String())
 }
 
-type cfgMsg config
-
-func loadConfigFile() tea.Msg {
+func loadConfigFile() (config, error) {
 	f := ".homie.toml"
 	if _, err := os.Stat(f); err != nil {
-		log.Fatal(err)
+		return config{}, err
 	}
 
 	var cfg config
 
 	_, err := toml.DecodeFile(f, &cfg)
 	if err != nil {
-		log.Fatal(err)
+		return config{}, err
 	}
-	return cfgMsg(cfg)
-}
-
-func checkServers(urls ...string) tea.Cmd {
-	return func() tea.Msg {
-		c := &http.Client{Timeout: 10 * time.Second}
-
-		var msg = make(statusMsg)
-
-		for i := range urls {
-			res, _ := c.Get(urls[i])
-			msg[urls[i]] = res.StatusCode
-		}
-
-		return msg
-	}
+	return cfg, nil
 }
 
 type statusMsg map[string]int
 
-func main() {
+func (m model) checkServers() tea.Cmd {
+	return tea.Tick(time.Second*30, func(t time.Time) tea.Msg {
+		msg := make(statusMsg)
 
-	p := tea.NewProgram(model{})
+		for _, app := range m.applications {
+			log.Println("checking: ", app.URL)
+			res, err := m.client.Get(app.URL)
+			if err != nil {
+				msg[app.URL] = 0
+				continue
+			}
+			log.Println("res: ", res.StatusCode)
+			msg[app.URL] = res.StatusCode
+		}
+		return msg
+	})
+}
+
+func main() {
+	// ====================================================================
+	// load config file
+	cfg, err := loadConfigFile()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// ====================================================================
+	// clients
+	httpClient := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	if len(os.Getenv("DEBUG")) > 0 {
+		f, err := tea.LogToFile("debug.log", "debug")
+		if err != nil {
+			fmt.Println("fatal:", err)
+			os.Exit(1)
+		}
+		defer f.Close()
+	}
+
+	initialModel := model{
+		applications: cfg.Applications,
+		metadata: metadata{
+			title:  cfg.Title,
+			status: "loading...",
+		},
+		client: httpClient,
+	}
+
+	log.Println("starting homie...")
+
+	p := tea.NewProgram(initialModel)
 	if err := p.Start(); err != nil {
 		log.Fatal(err)
 	}
