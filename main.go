@@ -22,8 +22,8 @@ type httpResp struct {
 }
 
 type config struct {
-	Title        string
-	Applications []application
+	Title        string        `toml:"title"`
+	Applications []application `toml:"applications"`
 }
 
 type application struct {
@@ -91,6 +91,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.metadata.status = fmt.Sprintf("%s might be having issues...", app.Name)
 			}
 		}
+		return m, m.checkServers()
 	}
 
 	return m, nil
@@ -185,7 +186,7 @@ func loadConfigFile() (config, error) {
 type statusMsg map[string]int
 
 func (m model) checkServers() tea.Cmd {
-	return func() tea.Msg {
+	return tea.Tick(time.Second*30, func(t time.Time) tea.Msg {
 		msg := make(statusMsg)
 
 		for _, app := range m.applications {
@@ -198,9 +199,8 @@ func (m model) checkServers() tea.Cmd {
 			log.Println("res: ", res.StatusCode)
 			msg[app.URL] = res.StatusCode
 		}
-
 		return msg
-	}
+	})
 }
 
 func main() {
