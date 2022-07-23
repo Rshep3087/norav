@@ -15,56 +15,6 @@ import (
 
 const (
 	width = 96
-
-	columnWidth = 30
-)
-
-var (
-	subtle  = lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#383838"}
-	special = lipgloss.AdaptiveColor{Light: "#43BF6D", Dark: "#73F59F"}
-
-	appStyle = lipgloss.NewStyle().
-			MarginRight(2).
-			Height(4).
-			Width(columnWidth + 1)
-
-	listItem = lipgloss.NewStyle().PaddingLeft(2).Render
-
-	url = lipgloss.NewStyle().Foreground(special).Render
-
-	titleStyle = lipgloss.NewStyle().
-			MarginTop(1).
-			MarginBottom(2).
-			BorderStyle(lipgloss.NormalBorder()).
-			BorderBottom(true).
-			BorderForeground(subtle).
-			Align(lipgloss.Center).
-			Width(100)
-
-		// Status Bar.
-
-	statusNugget = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFDF5")).
-			Padding(0, 1)
-
-	statusBarStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.AdaptiveColor{Light: "#343433", Dark: "#C1C6B2"}).
-			Background(lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#353533"})
-
-	statusStyle = lipgloss.NewStyle().
-			Inherit(statusBarStyle).
-			Foreground(lipgloss.Color("#FFFDF5")).
-			Background(lipgloss.Color("#FF5F87")).
-			Padding(0, 1).
-			MarginRight(1)
-
-	encodingStyle = statusNugget.Copy().
-			Background(lipgloss.Color("#A550DF")).
-			Align(lipgloss.Right)
-
-	statusText = lipgloss.NewStyle().Inherit(statusBarStyle)
-
-	fishCakeStyle = statusNugget.Copy().Background(lipgloss.Color("#6124DF"))
 )
 
 type httpResp struct {
@@ -149,9 +99,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) View() string {
 	ui := strings.Builder{}
 
-	title := titleStyle.Render(m.metadata.title)
+	// ==========================================================================
+	// title
+	{
+		title := titleStyle.
+			Background(lipgloss.Color("#FF5F87")).
+			Render(m.metadata.title)
 
-	ui.WriteString(title)
+		ui.WriteString(title + "\n")
+	}
 
 	var items []string
 	for i, app := range m.applications {
@@ -161,58 +117,54 @@ func (m model) View() string {
 		}
 
 		s := fmt.Sprintf(
-			"%s %s status: %d\n%s\n\n",
+			"%s %s status: %d\n%s",
 			cursor,
 			app.Name,
 			app.httpResp.status,
 			url(app.URL),
 		)
 
-		if app.httpResp.status == 0 {
-			s = fmt.Sprintf(
-				"%s %s status: \n%s\n\n",
-				cursor,
-				app.Name,
-				url(app.URL),
-			)
-
-		}
+		// if app.httpResp.status == 0 {
+		// 	s = fmt.Sprintf(
+		// 		"%s %s status: \n%s\n\n",
+		// 		cursor,
+		// 		app.Name,
+		// 		url(app.URL),
+		// 	)
+		// }
 
 		items = append(items, listItem(s))
 	}
 
-	apps := lipgloss.JoinHorizontal(lipgloss.Top,
-		appStyle.Render(
-			lipgloss.JoinVertical(
-				lipgloss.Left,
-				items...,
-			),
-		),
+	apps := lipgloss.JoinVertical(
+		lipgloss.Top,
+		items...,
 	)
 
 	ui.WriteString(apps)
+
+	ui.WriteString("\n")
 
 	{
 		w := lipgloss.Width
 
 		statusKey := statusStyle.Render("STATUS")
-		encoding := encodingStyle.Render("UTF-8")
-		fishCake := fishCakeStyle.Render("🍥 Fish Cake")
+		encoding := encodingStyle.Render(time.Now().Format(time.UnixDate))
 		statusVal := statusText.Copy().
-			Width(width - w(statusKey) - w(encoding) - w(fishCake)).
+			Width(width - w(statusKey) - w(encoding)).
 			Render(m.metadata.status)
 
-		bar := lipgloss.JoinHorizontal(lipgloss.Top,
+		bar := lipgloss.JoinHorizontal(
+			lipgloss.Top,
 			statusKey,
 			statusVal,
 			encoding,
-			fishCake,
 		)
 
 		ui.WriteString(statusBarStyle.Width(width).Render(bar))
 	}
 
-	return ui.String()
+	return docStyle.Render(ui.String())
 }
 
 func loadConfigFile() (config, error) {
