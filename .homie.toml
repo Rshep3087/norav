@@ -5,3 +5,5 @@ applications = [
 ]
 
 title = "Ryan's Homelab"
+
+interval = 10
