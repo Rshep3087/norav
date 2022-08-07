@@ -22,8 +22,9 @@ type httpResp struct {
 }
 
 type config struct {
-	Title        string        `toml:"title"`
-	Applications []application `toml:"applications"`
+	Title               string        `toml:"title"`
+	Applications        []application `toml:"applications"`
+	HealthCheckInterval int           `toml:"interval"`
 }
 
 type application struct {
@@ -39,9 +40,10 @@ type metadata struct {
 }
 
 type model struct {
-	applications []application
-	cursor       int
-	metadata     metadata
+	applications        []application
+	cursor              int
+	metadata            metadata
+	healthcheckInterval time.Duration
 
 	client *http.Client
 }
@@ -56,7 +58,7 @@ func (m model) GetAppURLs() []string {
 }
 
 func (m model) Init() tea.Cmd {
-	return m.checkServers()
+	return m.checkServers(10 * time.Millisecond)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -79,8 +81,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.cursor++
 			}
 
-		case "ctrl+h":
-			return m, m.checkServers()
 		}
 
 	case statusMsg:
@@ -91,7 +91,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.metadata.status = fmt.Sprintf("%s might be having issues...", app.Name)
 			}
 		}
-		return m, m.checkServers()
+		return m, m.checkServers(m.healthcheckInterval)
 	}
 
 	return m, nil
@@ -185,8 +185,8 @@ func loadConfigFile() (config, error) {
 
 type statusMsg map[string]int
 
-func (m model) checkServers() tea.Cmd {
-	return tea.Tick(time.Second*30, func(t time.Time) tea.Msg {
+func (m model) checkServers(d time.Duration) tea.Cmd {
+	return tea.Tick(d, func(t time.Time) tea.Msg {
 		msg := make(statusMsg)
 
 		for _, app := range m.applications {
@@ -232,7 +232,8 @@ func main() {
 			title:  cfg.Title,
 			status: "loading...",
 		},
-		client: httpClient,
+		client:              httpClient,
+		healthcheckInterval: time.Duration(cfg.HealthCheckInterval) * time.Second,
 	}
 
 	log.Println("starting homie...")
