@@ -198,13 +198,11 @@ func (m model) checkServers(d time.Duration) tea.Cmd {
 		msg := make(statusMsg)
 
 		for _, app := range m.applications {
-			log.Println("checking: ", app.URL)
 			res, err := m.client.Get(app.URL)
 			if err != nil {
 				msg[app.URL] = 0
 				continue
 			}
-			log.Println("res: ", res.StatusCode)
 			msg[app.URL] = res.StatusCode
 		}
 		return msg
