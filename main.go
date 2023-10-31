@@ -65,29 +65,37 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case tea.KeyMsg:
-
 		switch msg.String() {
-
 		case "ctrl+c", "q":
 			return m, tea.Quit
-
-		case "up", "k":
+		case "up":
 			if m.cursor > 0 {
 				m.cursor--
 			}
-
-		case "down", "j":
+		case "down":
 			if m.cursor < len(m.applications)-1 {
 				m.cursor++
 			}
-
+		case "k":
+			if m.cursor > 0 {
+				m.cursor--
+			}
+		case "j":
+			if m.cursor < len(m.applications)-1 {
+				m.cursor++
+			}
+		default:
+			return m, nil
 		}
 
 	case statusMsg:
 		m.metadata.status = "Looking good..."
 		for i, app := range m.applications {
 			m.applications[i].httpResp.status = msg[app.URL]
-			if m.applications[i].httpResp.status != http.StatusOK {
+			switch m.applications[i].httpResp.status {
+			case http.StatusOK:
+				// do nothing
+			default:
 				m.metadata.status = fmt.Sprintf("%s might be having issues...", app.Name)
 			}
 		}
