@@ -127,9 +127,15 @@ func (m model) applicationsView() string {
 			cursor = ">"
 		}
 
+		statusEmoji := "❌"
+		if app.httpResp.status == http.StatusOK {
+			statusEmoji = "✅"
+		}
+
 		s := fmt.Sprintf(
-			"%s %s status: %d\n%s",
+			"%s %s %s status: %d\n%s",
 			cursor,
+			statusEmoji,
 			app.Name,
 			app.httpResp.status,
 			url(app.URL),
