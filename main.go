@@ -130,16 +130,21 @@ func (m model) applicationsView() string {
 			statusEmoji = "✅"
 		}
 
-		s := fmt.Sprintf(
+		// Apply listItem style to the entire line and url style to the URL
+		line := fmt.Sprintf(
 			"%s %s %s status: %d %s",
 			cursor,
 			statusEmoji,
 			app.Name,
 			app.httpResp.status,
-			url(app.URL),
+			app.URL,
 		)
+		styledLine := listItem(line)
+		styledURL := url(app.URL)
+		// Replace the URL in the line with the styled URL
+		styledLineWithStyledURL := strings.Replace(styledLine, app.URL, styledURL, 1)
 
-		b.WriteString(listItem(s))
+		b.WriteString(styledLineWithStyledURL)
 	}
 
 	return b.String()
