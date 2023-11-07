@@ -113,7 +113,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) View() string {
 	var b strings.Builder
 
-	b.WriteString(m.viewport.View(m.applicationsView()))
+	b.WriteString(m.applicationsView())
 
 	return b.String()
 }
