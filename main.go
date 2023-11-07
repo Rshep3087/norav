@@ -51,16 +51,23 @@ type model struct {
 	cursor              int
 	metadata            metadata
 	healthcheckInterval time.Duration
+	viewport            viewport.Model
 
 	client *http.Client
 }
 
 func (m model) Init() tea.Cmd {
+	m.viewport = viewport.Model{Width: width, Height: 10}
+	m.viewport.YPosition = 0
 	return m.checkServers(10 * time.Millisecond)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.viewport.Width = msg.Width
+		m.viewport.Height = msg.Height
+		return m, nil
 
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -104,19 +111,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
-	ui := strings.Builder{}
+	var b strings.Builder
 
-	// ==========================================================================
-	// title
-	{
-		title := titleStyle.
-			Background(lipgloss.Color("12")).
-			Render(m.metadata.title)
+	b.WriteString(m.viewport.View(m.applicationsView()))
 
-		ui.WriteString(title + "\n")
-	}
+	return b.String()
+}
 
-	var items []string
+func (m model) applicationsView() string {
+	var b strings.Builder
+
 	for i, app := range m.applications {
 		cursor := " " // no cursor
 		if m.cursor == i {
@@ -131,38 +135,10 @@ func (m model) View() string {
 			url(app.URL),
 		)
 
-		items = append(items, listItem(s))
+		b.WriteString(listItem(s))
 	}
 
-	apps := lipgloss.JoinVertical(
-		lipgloss.Top,
-		items...,
-	)
-
-	ui.WriteString(apps)
-
-	ui.WriteString("\n")
-
-	{
-		w := lipgloss.Width
-
-		statusKey := statusStyle.Render("STATUS")
-		encoding := encodingStyle.Render(time.Now().Format(time.UnixDate))
-		statusVal := statusText.Copy().
-			Width(width - w(statusKey) - w(encoding)).
-			Render(m.metadata.status)
-
-		bar := lipgloss.JoinHorizontal(
-			lipgloss.Top,
-			statusKey,
-			statusVal,
-			encoding,
-		)
-
-		ui.WriteString(statusBarStyle.Width(width).Render(bar))
-	}
-
-	return docStyle.Render(ui.String())
+	return b.String()
 }
 
 func loadConfigFile(f string) (config, error) {
