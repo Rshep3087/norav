@@ -54,13 +54,13 @@ func (m model) View() string {
 	title := titleStyle.Render(m.metadata.title)
 	b.WriteString(title + "\n\n")
 
-	b.WriteString(m.applicationsView())
-
 	if m.showPiHoleDetail {
 		// Render the detailed page for pi hole
 		// This is a placeholder for the actual detailed view content
 		return "Pi Hole Detailed View"
 	}
+
+	b.WriteString(m.applicationsView())
 
 	// Check if all applications are good
 	allGood := true
