@@ -195,7 +195,17 @@ func (m model) checkServers(d time.Duration) tea.Cmd {
 		msg := make(statusMsg)
 
 		for _, app := range m.applications {
-			res, err := m.client.Get(app.URL)
+			req, err := http.NewRequest("GET", app.URL, nil)
+			if err != nil {
+				msg[app.URL] = 0
+				continue
+			}
+
+			if app.AuthHeader != "" && app.AuthKey != "" {
+				req.Header.Add(app.AuthHeader, app.AuthKey)
+			}
+
+			res, err := m.client.Do(req)
 			if err != nil {
 				msg[app.URL] = 0
 				continue
