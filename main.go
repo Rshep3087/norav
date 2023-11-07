@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,6 +12,8 @@ import (
 	"github.com/BurntSushi/toml"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/peterbourgon/ff/v4"
+	"github.com/peterbourgon/ff/v4/ffhelp"
 )
 
 const (
@@ -176,8 +179,7 @@ func (m model) View() string {
 	return docStyle.Render(ui.String())
 }
 
-func loadConfigFile() (config, error) {
-	f := ".homie.toml"
+func loadConfigFile(f string) (config, error) {
 	if _, err := os.Stat(f); err != nil {
 		return config{}, err
 	}
@@ -210,9 +212,24 @@ func (m model) checkServers(d time.Duration) tea.Cmd {
 }
 
 func main() {
+	fs := ff.NewFlagSet("homie")
+
+	var (
+		config = fs.String('c', "config", ".homie.toml", "path to config file")
+	)
+
+	err := fs.Parse(os.Args[1:])
+	switch {
+	case errors.Is(err, ff.ErrHelp):
+		fmt.Fprintf(os.Stderr, "%s\n", ffhelp.Flags(fs))
+		os.Exit(0)
+	case err != nil:
+		log.Fatal(err)
+	}
+
 	// ====================================================================
 	// load config file
-	cfg, err := loadConfigFile()
+	cfg, err := loadConfigFile(*config)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -242,10 +259,8 @@ func main() {
 		healthcheckInterval: time.Duration(cfg.HealthCheckInterval) * time.Second,
 	}
 
-	log.Println("starting homie...")
-
 	p := tea.NewProgram(initialModel)
-	if err := p.Start(); err != nil {
+	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
 	}
 }
