@@ -31,10 +31,14 @@ type config struct {
 }
 
 type application struct {
-	Name        string
-	URL         string
-	Description string
-	httpResp    httpResp
+	Name             string
+	URL              string
+	Description      string
+	httpResp         httpResp
+	AuthHeader       string
+	AuthKey          string
+	BasicAuthUsername string
+	BasicAuthPassword string
 }
 
 type metadata struct {
