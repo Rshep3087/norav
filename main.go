@@ -136,11 +136,19 @@ type statusMsg map[string]int
 
 // fetchPiHoleStats fetches statistics from the Pi-hole instance
 func (m model) fetchPiHoleStats() PiHSummary {
-	// Assuming the Pi-hole connector is already set up with the host and token
-	// You will need to replace `piHoleHost` and `piHoleToken` with actual values
+	// Find the Pi-hole application configuration
+	var piHoleApp application
+	for _, app := range m.applications {
+		if app.Name == "Pi-hole" {
+			piHoleApp = app
+			break
+		}
+	}
+
+	// Set up the Pi-hole connector with the URL and AuthKey from the config
 	piHoleConnector := PiHConnector{
-		Host:  "192.168.2.49",                                                     // Replace with actual Pi-hole host
-		Token: "8bda4efbe21b7ea71d80fdf5eb8d4258cbc8ef1317e4eaa9f471ac6f4ca3b086", // Replace with actual Pi-hole API token
+		Host:  strings.TrimPrefix(piHoleApp.URL, "http://"), // Remove "http://" prefix if present
+		Token: piHoleApp.AuthKey,                            // Use the AuthKey as the token
 	}
 	stats := piHoleConnector.Summary()
 	return stats
