@@ -57,6 +57,26 @@ func (m model) View() string {
 
 	b.WriteString(m.applicationsView())
 
+	// Check if all applications are good
+	allGood := true
+	for _, app := range m.applications {
+		if app.httpResp.status != http.StatusOK {
+			allGood = false
+			break
+		}
+	}
+
+	// Create status bar
+	var statusBar string
+	if allGood {
+		statusBar = statusBarStyle.Render("All good..")
+	} else {
+		statusBar = statusBarStyle.Render(m.metadata.status)
+	}
+
+	// Append status bar to the view
+	b.WriteString("\n" + statusBar + "\n")
+
 	return b.String()
 }
 
