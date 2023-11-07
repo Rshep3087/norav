@@ -86,6 +86,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.viewport.YOffset++
 				}
 			}
+		case "enter":
+			if m.applications[m.cursor].Name == "pi hole" {
+				m.showPiHoleDetail = true
+			}
 		default:
 			return m, nil
 		}
