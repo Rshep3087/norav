@@ -91,6 +91,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.applications[m.cursor].Name == "Pi-hole" {
 				m.showPiHoleDetail = true
 			}
+		case "esc":
+			if m.showPiHoleDetail {
+				m.showPiHoleDetail = false
+			}
 		default:
 			return m, nil
 		}
