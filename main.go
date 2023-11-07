@@ -31,12 +31,12 @@ type config struct {
 }
 
 type application struct {
-	Name             string
-	URL              string
-	Description      string
-	httpResp         httpResp
-	AuthHeader       string
-	AuthKey          string
+	Name              string
+	URL               string
+	Description       string
+	httpResp          httpResp
+	AuthHeader        string
+	AuthKey           string
 	BasicAuthUsername string
 	BasicAuthPassword string
 }
@@ -53,15 +53,6 @@ type model struct {
 	healthcheckInterval time.Duration
 
 	client *http.Client
-}
-
-func (m model) GetAppURLs() []string {
-	var urls []string
-	for _, v := range m.applications {
-		urls = append(urls, v.URL)
-	}
-
-	return urls
 }
 
 func (m model) Init() tea.Cmd {
