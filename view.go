@@ -20,9 +20,8 @@ var (
 	titleStyle = lipgloss.NewStyle().
 			MarginBottom(1).
 			Align(lipgloss.Left).
+			Background(lipgloss.Color("#FF5F87")).
 			Width(100)
-
-		// Status Bar.
 
 	statusNugget = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FFFDF5")).
