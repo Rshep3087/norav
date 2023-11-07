@@ -51,7 +51,7 @@ type model struct {
 	metadata            metadata
 	healthcheckInterval time.Duration
 	viewport            viewport.Model
-	showPiHoleDetail    bool // Flag to indicate if the pi hole detailed view should be shown
+	showPiHoleDetail    bool       // Flag to indicate if the pi hole detailed view should be shown
 	piHoleStats         PiHSummary // Field to store Pi-hole statistics
 
 	client *http.Client
@@ -139,8 +139,8 @@ func (m model) fetchPiHoleStats() PiHSummary {
 	// Assuming the Pi-hole connector is already set up with the host and token
 	// You will need to replace `piHoleHost` and `piHoleToken` with actual values
 	piHoleConnector := PiHConnector{
-		Host:  "piHoleHost", // Replace with actual Pi-hole host
-		Token: "piHoleToken", // Replace with actual Pi-hole API token
+		Host:  "192.168.2.49",                                                     // Replace with actual Pi-hole host
+		Token: "8bda4efbe21b7ea71d80fdf5eb8d4258cbc8ef1317e4eaa9f471ac6f4ca3b086", // Replace with actual Pi-hole API token
 	}
 	stats := piHoleConnector.Summary()
 	return stats

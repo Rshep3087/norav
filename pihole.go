@@ -31,16 +31,16 @@ type PiHVersion struct {
 
 // PiHSummary contains Pi-Hole summary data.
 type PiHSummary struct {
-	AdsBlocked       int     `json:"ads_blocked_today"`
-	AdsPercentage    float64 `json:"ads_percentage_today"`
-	ClientsEverSeen  int     `json:"clients_ever_seen"`
-	DNSQueries       int     `json:"dns_queries_today"`
-	DomainsBlocked   int     `json:"domains_being_blocked"`
-	QueriesCached    int     `json:"queries_cached"`
-	QueriesForwarded int     `json:"queries_forwarded"`
-	Status           string  `json:"status"`
-	UniqueClients    int     `json:"unique_clients"`
-	UniqueDomains    int     `json:"unique_domains"`
+	AdsBlocked       string `json:"ads_blocked_today"`
+	AdsPercentage    string `json:"ads_percentage_today"`
+	ClientsEverSeen  string `json:"clients_ever_seen"`
+	DNSQueries       string `json:"dns_queries_today"`
+	DomainsBlocked   string `json:"domains_being_blocked"`
+	QueriesCached    string `json:"queries_cached"`
+	QueriesForwarded string `json:"queries_forwarded"`
+	Status           string `json:"status"`
+	UniqueClients    string `json:"unique_clients"`
+	UniqueDomains    string `json:"unique_domains"`
 }
 
 // PiHTimeData represents statistics over time.
@@ -250,10 +250,10 @@ func (ph *PiHConnector) RecentBlocked() string {
 // Show returns 24h Summary of PiHole System.
 func (ph *PiHSummary) Show() {
 	fmt.Println("=== 24h Summary:")
-	fmt.Printf("- Blocked Domains: %d\n", ph.AdsBlocked)
-	fmt.Printf("- Blocked Percentage: %.2f%%\n", ph.AdsPercentage)
-	fmt.Printf("- Queries: %d\n", ph.DNSQueries)
-	fmt.Printf("- Clients Ever Seen: %d\n", ph.ClientsEverSeen)
+	fmt.Printf("- Blocked Domains: %s\n", ph.AdsBlocked)
+	fmt.Printf("- Blocked Percentage: %s\n", ph.AdsPercentage)
+	fmt.Printf("- Queries: %s\n", ph.DNSQueries)
+	fmt.Printf("- Clients Ever Seen: %s\n", ph.ClientsEverSeen)
 }
 
 // ShowBlocked returns sorted top Blocked domains over last 24h.
