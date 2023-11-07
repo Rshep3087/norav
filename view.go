@@ -19,7 +19,7 @@ var (
 
 	titleStyle = lipgloss.NewStyle().
 			MarginBottom(1).
-			Align(lipgloss.Center).
+			Align(lipgloss.Left).
 			Width(100)
 
 		// Status Bar.
