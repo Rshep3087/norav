@@ -31,14 +31,14 @@ type config struct {
 }
 
 type application struct {
-	Name              string
-	URL               string
-	Description       string
+	Name              string `toml:"name"`
+	URL               string `toml:"url"`
+	Description       string `toml:"description"`
 	httpResp          httpResp
-	AuthHeader        string
-	AuthKey           string
-	BasicAuthUsername string
-	BasicAuthPassword string
+	AuthHeader        string `toml:"authHeader"`
+	AuthKey           string `toml:"authKey"`
+	BasicAuthUsername string `toml:"basicAuthUsername"`
+	BasicAuthPassword string `toml:"basicAuthPassword"`
 }
 
 type metadata struct {
