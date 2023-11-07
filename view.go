@@ -55,9 +55,14 @@ func (m model) View() string {
 	b.WriteString(title + "\n\n")
 
 	if m.showPiHoleDetail {
-		// Render the detailed page for pi hole
-		// This is a placeholder for the actual detailed view content
-		return "Pi Hole Detailed View"
+		// Render the detailed page for Pi-hole with actual statistics
+		var piHoleDetailBuilder strings.Builder
+		piHoleDetailBuilder.WriteString("Pi-hole Detailed View\n")
+		piHoleDetailBuilder.WriteString(fmt.Sprintf("Total Queries: %d\n", m.piHoleStats.DNSQueries))
+		piHoleDetailBuilder.WriteString(fmt.Sprintf("Queries Blocked: %d\n", m.piHoleStats.AdsBlocked))
+		piHoleDetailBuilder.WriteString(fmt.Sprintf("Percentage Blocked: %.2f%%\n", m.piHoleStats.AdsPercentage))
+		piHoleDetailBuilder.WriteString(fmt.Sprintf("Domains on Adlist: %d\n", m.piHoleStats.DomainsBlocked))
+		return piHoleDetailBuilder.String()
 	}
 
 	b.WriteString(m.applicationsView())

@@ -52,6 +52,7 @@ type model struct {
 	healthcheckInterval time.Duration
 	viewport            viewport.Model
 	showPiHoleDetail    bool // Flag to indicate if the pi hole detailed view should be shown
+	piHoleStats         PiHSummary // Field to store Pi-hole statistics
 
 	client *http.Client
 }
@@ -90,6 +91,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if m.applications[m.cursor].Name == "Pi-hole" {
 				m.showPiHoleDetail = true
+				m.piHoleStats = m.fetchPiHoleStats()
 			}
 		case "esc":
 			if m.showPiHoleDetail {
@@ -131,6 +133,18 @@ func loadConfigFile(f string) (config, error) {
 }
 
 type statusMsg map[string]int
+
+// fetchPiHoleStats fetches statistics from the Pi-hole instance
+func (m model) fetchPiHoleStats() PiHSummary {
+	// Assuming the Pi-hole connector is already set up with the host and token
+	// You will need to replace `piHoleHost` and `piHoleToken` with actual values
+	piHoleConnector := PiHConnector{
+		Host:  "piHoleHost", // Replace with actual Pi-hole host
+		Token: "piHoleToken", // Replace with actual Pi-hole API token
+	}
+	stats := piHoleConnector.Summary()
+	return stats
+}
 
 func (m model) checkServers(d time.Duration) tea.Cmd {
 	return tea.Tick(d, func(t time.Time) tea.Msg {
