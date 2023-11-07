@@ -1,9 +1,0 @@
-applications = [
-    { name = "Pi-hole", url = "http://192.168.2.49/admin/", description = "a dns sinkhole" },
-    { name = "Home Assistant", url = "http://192.168.2.49:8123/", description = "home automation" },
-    { name = "Baby Buddy", url = "http://192.168.2.49:8000/", description = "baby buddy" },
-]
-
-title = "Ryan's Homelab"
-
-interval = 10
