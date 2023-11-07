@@ -88,11 +88,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "enter":
-			if m.applications[m.cursor].Name == "pi hole" {
-				m.showPiHoleDetail = true
-			}
-		case "enter":
-			if m.applications[m.cursor].Name == "pi hole" {
+			if m.applications[m.cursor].Name == "Pi-hole" {
 				m.showPiHoleDetail = true
 			}
 		default:
