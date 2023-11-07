@@ -131,7 +131,7 @@ func (m model) applicationsView() string {
 		}
 
 		s := fmt.Sprintf(
-			"%s %s %s status: %d\n%s",
+			"%s %s %s status: %d %s",
 			cursor,
 			statusEmoji,
 			app.Name,
