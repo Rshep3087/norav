@@ -131,15 +131,6 @@ func (m model) View() string {
 			url(app.URL),
 		)
 
-		// if app.httpResp.status == 0 {
-		// 	s = fmt.Sprintf(
-		// 		"%s %s status: \n%s\n\n",
-		// 		cursor,
-		// 		app.Name,
-		// 		url(app.URL),
-		// 	)
-		// }
-
 		items = append(items, listItem(s))
 	}
 
