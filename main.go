@@ -51,6 +51,7 @@ type model struct {
 	metadata            metadata
 	healthcheckInterval time.Duration
 	viewport            viewport.Model
+	showPiHoleDetail    bool // Flag to indicate if the pi hole detailed view should be shown
 
 	client *http.Client
 }
@@ -85,6 +86,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				if m.cursor >= m.viewport.YOffset+m.viewport.Height {
 					m.viewport.YOffset++
 				}
+			}
+		case "enter":
+			if m.applications[m.cursor].Name == "pi hole" {
+				m.showPiHoleDetail = true
 			}
 		case "enter":
 			if m.applications[m.cursor].Name == "pi hole" {

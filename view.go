@@ -56,6 +56,12 @@ func (m model) View() string {
 
 	b.WriteString(m.applicationsView())
 
+	if m.showPiHoleDetail {
+		// Render the detailed page for pi hole
+		// This is a placeholder for the actual detailed view content
+		return "Pi Hole Detailed View"
+	}
+
 	// Check if all applications are good
 	allGood := true
 	for _, app := range m.applications {
