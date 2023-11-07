@@ -111,6 +111,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m model) View() string {
 	var b strings.Builder
 
+	// Apply titleStyle to the title and add it to the top of the view
+	title := titleStyle(m.metadata.title)
+	b.WriteString(title + "\n\n")
+
 	b.WriteString(m.applicationsView())
 
 	return b.String()
