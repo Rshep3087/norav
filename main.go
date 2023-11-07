@@ -181,14 +181,14 @@ func (m model) View() string {
 
 func loadConfigFile(f string) (config, error) {
 	if _, err := os.Stat(f); err != nil {
-		return config{}, err
+		return config{}, fmt.Errorf("config file %s does not exist: %w", f, err)
 	}
 
 	var cfg config
 
 	_, err := toml.DecodeFile(f, &cfg)
 	if err != nil {
-		return config{}, err
+		return config{}, fmt.Errorf("failed to decode config file %s: %w", f, err)
 	}
 	return cfg, nil
 }
