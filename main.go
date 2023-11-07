@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -106,52 +105,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
-}
-
-func (m model) View() string {
-	var b strings.Builder
-
-	// Apply titleStyle to the title and add it to the top of the view
-	title := titleStyle.Render(m.metadata.title)
-	b.WriteString(title + "\n\n")
-
-	b.WriteString(m.applicationsView())
-
-	return b.String()
-}
-
-func (m model) applicationsView() string {
-	var b strings.Builder
-
-	for i, app := range m.applications {
-		cursor := " " // no cursor
-		if m.cursor == i {
-			cursor = ">"
-		}
-
-		statusEmoji := "❌"
-		if app.httpResp.status == http.StatusOK {
-			statusEmoji = "✅"
-		}
-
-		// Apply listItem style to the entire line and url style to the URL
-		line := fmt.Sprintf(
-			"%s %s %s status: %d %s",
-			cursor,
-			statusEmoji,
-			app.Name,
-			app.httpResp.status,
-			app.URL,
-		)
-		styledLine := listItem(line)
-		styledURL := url(app.URL)
-		// Replace the URL in the line with the styled URL
-		styledLineWithStyledURL := strings.Replace(styledLine, app.URL, styledURL, 1)
-
-		b.WriteString(styledLineWithStyledURL)
-	}
-
-	return b.String()
 }
 
 func loadConfigFile(f string) (config, error) {
