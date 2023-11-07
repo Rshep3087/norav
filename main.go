@@ -73,21 +73,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
-		case "up":
+		case "up", "k":
 			if m.cursor > 0 {
 				m.cursor--
+				if m.cursor < m.viewport.YOffset {
+					m.viewport.YOffset--
+				}
 			}
-		case "down":
+		case "down", "j":
 			if m.cursor < len(m.applications)-1 {
 				m.cursor++
-			}
-		case "k":
-			if m.cursor > 0 {
-				m.cursor--
-			}
-		case "j":
-			if m.cursor < len(m.applications)-1 {
-				m.cursor++
+				if m.cursor >= m.viewport.YOffset+m.viewport.Height {
+					m.viewport.YOffset++
+				}
 			}
 		default:
 			return m, nil
