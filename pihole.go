@@ -14,7 +14,10 @@ import (
 // PiHConnector represents base API connector type.
 // Host: DNS or IP address of your Pi-Hole
 // Token: API Token (see /etc/pihole/setupVars.conf)
-// No changes needed here, as the struct is already set up to accept dynamic values for Host and Token.
+type PiHConnector struct {
+	Host  string
+	Token string
+}
 
 // PiHType coitains Pi-Hole backend type (PHP or FTL).
 type PiHType struct {

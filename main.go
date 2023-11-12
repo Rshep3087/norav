@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -145,10 +146,13 @@ func (m model) fetchPiHoleStats() PiHSummary {
 		}
 	}
 
+	piholeURL := strings.TrimPrefix(piHoleApp.URL, "http://") // Remove "http://" prefix if present
+	piholeURL = strings.TrimSuffix(piholeURL, "/admin/")      // Remove "/admin" suffix if present
+
 	// Set up the Pi-hole connector with the URL and AuthKey from the config
 	piHoleConnector := PiHConnector{
-		Host:  strings.TrimPrefix(piHoleApp.URL, "http://"), // Remove "http://" prefix if present
-		Token: piHoleApp.AuthKey,                            // Use the AuthKey as the token
+		Host:  piholeURL,         // Remove "http://" prefix if present
+		Token: piHoleApp.AuthKey, // Use the AuthKey as the token
 	}
 	stats := piHoleConnector.Summary()
 	return stats
