@@ -5,11 +5,12 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/lipgloss"
 )
 
 var (
-	special = lipgloss.AdaptiveColor{Light: "#43BF6D", Dark: "#73F59F"}
+	// special = lipgloss.AdaptiveColor{Light: "#43BF6D", Dark: "#73F59F"}
 
 	detailHeaderStyle = lipgloss.NewStyle().
 				Bold(true).
@@ -24,12 +25,6 @@ var (
 			PaddingLeft(2).
 			PaddingBottom(1).
 			Width(22)
-
-	listItem = lipgloss.NewStyle().
-			MarginBottom(2).
-			PaddingLeft(2).Render
-
-	url = lipgloss.NewStyle().Foreground(special).Render
 
 	titleStyle = lipgloss.NewStyle().
 			MarginBottom(1).
@@ -86,35 +81,52 @@ func (m model) View() string {
 }
 
 func (m model) applicationsView() string {
-	var b strings.Builder
 
-	for i, app := range m.applications {
-		cursor := " " // no cursor
-		if m.cursor == i {
-			cursor = ">"
-		}
+	columns := []table.Column{
+		{Title: "Status", Width: 10},
+		{Title: "Name", Width: 20},
+		{Title: "URL", Width: 70},
+	}
 
+	rows := []table.Row{
+		{"", "", ""},
+	}
+
+	for _, app := range m.applications {
 		statusEmoji := "❌"
 		if app.httpResp.status == http.StatusOK {
 			statusEmoji = "✅"
 		}
 
-		// Apply listItem style to the entire line and url style to the URL
-		line := fmt.Sprintf(
-			"%s %s %s status: %d %s",
-			cursor,
-			statusEmoji,
-			app.Name,
-			app.httpResp.status,
-			app.URL,
-		)
-		styledLine := listItem(line)
-		styledURL := url(app.URL)
-		// Replace the URL in the line with the styled URL
-		styledLineWithStyledURL := strings.Replace(styledLine, app.URL, styledURL, 1)
+		status := fmt.Sprintf("%s %d", statusEmoji, app.httpResp.status)
 
-		b.WriteString(styledLineWithStyledURL)
+		row := table.Row{
+			status,
+			app.Name,
+			app.URL,
+		}
+
+		rows = append(rows, row)
 	}
 
-	return b.String()
+	t := table.New(
+		table.WithColumns(columns),
+		table.WithRows(rows),
+		table.WithFocused(true),
+		table.WithHeight(10),
+	)
+
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240")).
+		BorderBottom(true).
+		Bold(false)
+	s.Selected = s.Selected.
+		Foreground(lipgloss.Color("229")).
+		Background(lipgloss.Color("57")).
+		Bold(false)
+	t.SetStyles(s)
+
+	return t.View() + "\n"
 }
