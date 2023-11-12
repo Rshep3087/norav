@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/charmbracelet/bubbles/table"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // application is a struct that holds the information for self-hosted application
@@ -60,7 +61,21 @@ func buildApplicationTable(apps []application) table.Model {
 	t := table.New(
 		table.WithColumns(columns),
 		table.WithRows(rows),
+		table.WithFocused(true),
+		table.WithHeight(10),
 	)
+
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240")).
+		BorderBottom(true).
+		Bold(false)
+	s.Selected = s.Selected.
+		Foreground(lipgloss.Color("229")).
+		Background(lipgloss.Color("57")).
+		Bold(true)
+	t.SetStyles(s)
 
 	return t
 }
