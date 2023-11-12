@@ -13,13 +13,17 @@ var (
 
 	detailHeaderStyle = lipgloss.NewStyle().
 				Bold(true).
-				Foreground(lipgloss.Color("#FFFFFF")).
-				Background(special).
-				Padding(0, 1)
+				Foreground(lipgloss.Color("#FAFAFA")).
+				Padding(0, 1).
+				Width(100)
 
 	detailDataStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#D9DCCF")).
-			Render
+			Bold(true).
+			Foreground(lipgloss.Color("#FAFAFA")).
+			PaddingTop(2).
+			PaddingLeft(2).
+			PaddingBottom(1).
+			Width(22)
 
 	listItem = lipgloss.NewStyle().
 			MarginBottom(2).
