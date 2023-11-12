@@ -5,12 +5,14 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/lipgloss"
 )
 
 var (
 	// special = lipgloss.AdaptiveColor{Light: "#43BF6D", Dark: "#73F59F"}
+	baseStyle = lipgloss.NewStyle().
+			BorderStyle(lipgloss.NormalBorder()).
+			BorderForeground(lipgloss.Color("240"))
 
 	detailHeaderStyle = lipgloss.NewStyle().
 				Bold(true).
@@ -48,10 +50,10 @@ func (m model) View() string {
 		// Render the detailed page for Pi-hole with actual statistics
 		var piHoleDetailBuilder strings.Builder
 		piHoleDetailBuilder.WriteString(detailHeaderStyle.Render("Pi-hole Detailed View") + "\n\n")
-		piHoleDetailBuilder.WriteString(fmt.Sprintf(detailHeaderStyle.Render("Total Queries: ") + detailDataStyle.Render(m.piHoleStats.DNSQueries) + "\n"))
-		piHoleDetailBuilder.WriteString(fmt.Sprintf(detailHeaderStyle.Render("Queries Blocked: ") + detailDataStyle.Render(m.piHoleStats.AdsBlocked) + "\n"))
-		piHoleDetailBuilder.WriteString(fmt.Sprintf(detailHeaderStyle.Render("Percentage Blocked: ") + detailDataStyle.Render(m.piHoleStats.AdsPercentage+"%%") + "\n"))
-		piHoleDetailBuilder.WriteString(fmt.Sprintf(detailHeaderStyle.Render("Domains on Adlist: ") + detailDataStyle.Render(m.piHoleStats.DomainsBlocked) + "\n"))
+		piHoleDetailBuilder.WriteString(fmt.Sprintf(detailHeaderStyle.Render("Total Queries: ") + detailDataStyle.Render(m.piHoleSummary.DNSQueries) + "\n"))
+		piHoleDetailBuilder.WriteString(fmt.Sprintf(detailHeaderStyle.Render("Queries Blocked: ") + detailDataStyle.Render(m.piHoleSummary.AdsBlocked) + "\n"))
+		piHoleDetailBuilder.WriteString(fmt.Sprintf(detailHeaderStyle.Render("Percentage Blocked: ") + detailDataStyle.Render(m.piHoleSummary.AdsPercentage+"%%") + "\n"))
+		piHoleDetailBuilder.WriteString(fmt.Sprintf(detailHeaderStyle.Render("Domains on Adlist: ") + detailDataStyle.Render(m.piHoleSummary.DomainsBlocked) + "\n"))
 		return piHoleDetailBuilder.String()
 	}
 
@@ -80,53 +82,8 @@ func (m model) View() string {
 	return b.String()
 }
 
-func (m model) applicationsView() string {
-
-	columns := []table.Column{
-		{Title: "Status", Width: 10},
-		{Title: "Name", Width: 20},
-		{Title: "URL", Width: 70},
-	}
-
-	rows := []table.Row{
-		{"", "", ""},
-	}
-
-	for _, app := range m.applications {
-		statusEmoji := "❌"
-		if app.httpResp.status == http.StatusOK {
-			statusEmoji = "✅"
-		}
-
-		status := fmt.Sprintf("%s %d", statusEmoji, app.httpResp.status)
-
-		row := table.Row{
-			status,
-			app.Name,
-			app.URL,
-		}
-
-		rows = append(rows, row)
-	}
-
-	t := table.New(
-		table.WithColumns(columns),
-		table.WithRows(rows),
-		table.WithFocused(true),
-		table.WithHeight(10),
-	)
-
-	s := table.DefaultStyles()
-	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
-		BorderBottom(true).
-		Bold(false)
-	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
-		Bold(false)
-	t.SetStyles(s)
-
-	return t.View() + "\n"
+func (m *model) applicationsView() string {
+	rows := buildTableRows(m.applications)
+	m.appTable.SetRows(rows)
+	return baseStyle.Render(m.appTable.View()) + "\n"
 }

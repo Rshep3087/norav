@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/BurntSushi/toml"
+	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/peterbourgon/ff/v4"
@@ -20,25 +20,10 @@ const (
 	width = 96
 )
 
+type statusMsg map[string]int
+
 type httpResp struct {
 	status int
-}
-
-type config struct {
-	Title               string        `toml:"title"`
-	Applications        []application `toml:"applications"`
-	HealthCheckInterval int           `toml:"interval"`
-}
-
-type application struct {
-	Name              string `toml:"name"`
-	URL               string `toml:"url"`
-	Description       string `toml:"description"`
-	httpResp          httpResp
-	AuthHeader        string `toml:"authHeader"`
-	AuthKey           string `toml:"authKey"`
-	BasicAuthUsername string `toml:"basicAuthUsername"`
-	BasicAuthPassword string `toml:"basicAuthPassword"`
 }
 
 type metadata struct {
@@ -46,16 +31,20 @@ type metadata struct {
 	status string
 }
 
+// model is the bubbletea model
 type model struct {
+	// applications is a list of applications to be monitored
 	applications        []application
 	cursor              int
 	metadata            metadata
 	healthcheckInterval time.Duration
 	viewport            viewport.Model
-	showPiHoleDetail    bool       // Flag to indicate if the pi hole detailed view should be shown
-	piHoleStats         PiHSummary // Field to store Pi-hole statistics
-
-	client *http.Client
+	// showPiHoleDetail is a flag to indicate if the pi hole detailed view should be shown
+	showPiHoleDetail bool
+	// piHoleSummary store Pi-hole DNS statistics
+	piHoleSummary PiHSummary
+	appTable      table.Model
+	client        *http.Client
 }
 
 func (m model) Init() tea.Cmd {
@@ -65,7 +54,9 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
 	switch msg := msg.(type) {
+
 	case tea.WindowSizeMsg:
 		m.viewport.Width = msg.Width
 		m.viewport.Height = msg.Height
@@ -92,7 +83,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if m.applications[m.cursor].Name == "Pi-hole" {
 				m.showPiHoleDetail = true
-				m.piHoleStats = m.fetchPiHoleStats()
+				m.piHoleSummary = m.fetchPiHoleStats()
 			}
 		case "esc":
 			if m.showPiHoleDetail {
@@ -116,24 +107,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.checkServers(m.healthcheckInterval)
 	}
 
-	return m, nil
+	m.appTable, cmd = m.appTable.Update(msg)
+
+	return m, cmd
 }
-
-func loadConfigFile(f string) (config, error) {
-	if _, err := os.Stat(f); err != nil {
-		return config{}, fmt.Errorf("config file %s does not exist: %w", f, err)
-	}
-
-	var cfg config
-
-	_, err := toml.DecodeFile(f, &cfg)
-	if err != nil {
-		return config{}, fmt.Errorf("failed to decode config file %s: %w", f, err)
-	}
-	return cfg, nil
-}
-
-type statusMsg map[string]int
 
 // fetchPiHoleStats fetches statistics from the Pi-hole instance
 func (m model) fetchPiHoleStats() PiHSummary {
@@ -222,6 +199,8 @@ func main() {
 		defer f.Close()
 	}
 
+	appTable := buildApplicationTable(cfg.Applications)
+
 	initialModel := model{
 		applications: cfg.Applications,
 		metadata: metadata{
@@ -230,6 +209,7 @@ func main() {
 		},
 		client:              httpClient,
 		healthcheckInterval: time.Duration(cfg.HealthCheckInterval) * time.Second,
+		appTable:            appTable,
 	}
 
 	p := tea.NewProgram(initialModel)
