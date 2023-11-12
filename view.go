@@ -23,28 +23,9 @@ var (
 			Background(lipgloss.Color("#FF5F87")).
 			Width(100)
 
-	statusNugget = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFDF5")).
-			Padding(0, 1)
-
 	statusBarStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.AdaptiveColor{Light: "#343433", Dark: "#C1C6B2"}).
 			Background(lipgloss.AdaptiveColor{Light: "#D9DCCF", Dark: "#353533"})
-
-	statusStyle = lipgloss.NewStyle().
-			Inherit(statusBarStyle).
-			Foreground(lipgloss.Color("#FFFDF5")).
-			Background(lipgloss.Color("#FF5F87")).
-			Padding(0, 1).
-			MarginRight(1)
-
-	encodingStyle = statusNugget.Copy().
-			Background(lipgloss.Color("#A550DF")).
-			Align(lipgloss.Right)
-
-	statusText = lipgloss.NewStyle().Inherit(statusBarStyle)
-
-	docStyle = lipgloss.NewStyle().Padding(1, 2, 1, 2)
 )
 
 func (m model) View() string {
@@ -58,10 +39,10 @@ func (m model) View() string {
 		// Render the detailed page for Pi-hole with actual statistics
 		var piHoleDetailBuilder strings.Builder
 		piHoleDetailBuilder.WriteString("Pi-hole Detailed View\n")
-		piHoleDetailBuilder.WriteString(fmt.Sprintf("Total Queries: %d\n", m.piHoleStats.DNSQueries))
-		piHoleDetailBuilder.WriteString(fmt.Sprintf("Queries Blocked: %d\n", m.piHoleStats.AdsBlocked))
-		piHoleDetailBuilder.WriteString(fmt.Sprintf("Percentage Blocked: %.2f%%\n", m.piHoleStats.AdsPercentage))
-		piHoleDetailBuilder.WriteString(fmt.Sprintf("Domains on Adlist: %d\n", m.piHoleStats.DomainsBlocked))
+		piHoleDetailBuilder.WriteString(fmt.Sprintf("Total Queries: %s\n", m.piHoleStats.DNSQueries))
+		piHoleDetailBuilder.WriteString(fmt.Sprintf("Queries Blocked: %s\n", m.piHoleStats.AdsBlocked))
+		piHoleDetailBuilder.WriteString(fmt.Sprintf("Percentage Blocked: %s%%\n", m.piHoleStats.AdsPercentage))
+		piHoleDetailBuilder.WriteString(fmt.Sprintf("Domains on Adlist: %s\n", m.piHoleStats.DomainsBlocked))
 		return piHoleDetailBuilder.String()
 	}
 
