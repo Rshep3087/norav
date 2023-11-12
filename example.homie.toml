@@ -1,0 +1,12 @@
+# the applications you want to monitor
+applications = [
+    { name = "Pi-hole", url = "http://127.0.0.1/admin/", description = "a dns sinkhole" },
+    { name = "Home Assistant", url = "http://127.0.0.1:8123/", description = "home automation" },
+    { name = "Baby Buddy", url = "http://127.0.0.1:8000/", description = "baby buddy" },
+]
+
+# title at the top of the page
+title = "Example Homelab"
+
+# how often your applications should be checked in seconds
+interval = 10

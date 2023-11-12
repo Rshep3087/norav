@@ -1,37 +1,27 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
-	"github.com/BurntSushi/toml"
+	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/peterbourgon/ff/v4"
+	"github.com/peterbourgon/ff/v4/ffhelp"
 )
 
 const (
 	width = 96
 )
 
+type statusMsg map[string]int
+
 type httpResp struct {
 	status int
-}
-
-type config struct {
-	Title               string        `toml:"title"`
-	Applications        []application `toml:"applications"`
-	HealthCheckInterval int           `toml:"interval"`
-}
-
-type application struct {
-	Name        string
-	URL         string
-	Description string
-	httpResp    httpResp
 }
 
 type metadata struct {
@@ -39,174 +29,25 @@ type metadata struct {
 	status string
 }
 
-type model struct {
-	applications        []application
-	cursor              int
-	metadata            metadata
-	healthcheckInterval time.Duration
+func main() {
+	fs := ff.NewFlagSet("norav")
 
-	client *http.Client
-}
-
-func (m model) GetAppURLs() []string {
-	var urls []string
-	for _, v := range m.applications {
-		urls = append(urls, v.URL)
-	}
-
-	return urls
-}
-
-func (m model) Init() tea.Cmd {
-	return m.checkServers(10 * time.Millisecond)
-}
-
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-
-	case tea.KeyMsg:
-
-		switch msg.String() {
-
-		case "ctrl+c", "q":
-			return m, tea.Quit
-
-		case "up", "k":
-			if m.cursor > 0 {
-				m.cursor--
-			}
-
-		case "down", "j":
-			if m.cursor < len(m.applications)-1 {
-				m.cursor++
-			}
-
-		}
-
-	case statusMsg:
-		m.metadata.status = "Looking good..."
-		for i, app := range m.applications {
-			m.applications[i].httpResp.status = msg[app.URL]
-			if m.applications[i].httpResp.status != http.StatusOK {
-				m.metadata.status = fmt.Sprintf("%s might be having issues...", app.Name)
-			}
-		}
-		return m, m.checkServers(m.healthcheckInterval)
-	}
-
-	return m, nil
-}
-
-func (m model) View() string {
-	ui := strings.Builder{}
-
-	// ==========================================================================
-	// title
-	{
-		title := titleStyle.
-			Background(lipgloss.Color("12")).
-			Render(m.metadata.title)
-
-		ui.WriteString(title + "\n")
-	}
-
-	var items []string
-	for i, app := range m.applications {
-		cursor := " " // no cursor
-		if m.cursor == i {
-			cursor = ">"
-		}
-
-		s := fmt.Sprintf(
-			"%s %s status: %d\n%s",
-			cursor,
-			app.Name,
-			app.httpResp.status,
-			url(app.URL),
-		)
-
-		// if app.httpResp.status == 0 {
-		// 	s = fmt.Sprintf(
-		// 		"%s %s status: \n%s\n\n",
-		// 		cursor,
-		// 		app.Name,
-		// 		url(app.URL),
-		// 	)
-		// }
-
-		items = append(items, listItem(s))
-	}
-
-	apps := lipgloss.JoinVertical(
-		lipgloss.Top,
-		items...,
+	var (
+		config = fs.String('c', "config", ".norav.toml", "path to config file")
 	)
 
-	ui.WriteString(apps)
-
-	ui.WriteString("\n")
-
-	{
-		w := lipgloss.Width
-
-		statusKey := statusStyle.Render("STATUS")
-		encoding := encodingStyle.Render(time.Now().Format(time.UnixDate))
-		statusVal := statusText.Copy().
-			Width(width - w(statusKey) - w(encoding)).
-			Render(m.metadata.status)
-
-		bar := lipgloss.JoinHorizontal(
-			lipgloss.Top,
-			statusKey,
-			statusVal,
-			encoding,
-		)
-
-		ui.WriteString(statusBarStyle.Width(width).Render(bar))
+	err := fs.Parse(os.Args[1:])
+	switch {
+	case errors.Is(err, ff.ErrHelp):
+		fmt.Fprintf(os.Stderr, "%s\n", ffhelp.Flags(fs))
+		os.Exit(0)
+	case err != nil:
+		log.Fatal(err)
 	}
 
-	return docStyle.Render(ui.String())
-}
-
-func loadConfigFile() (config, error) {
-	f := ".homie.toml"
-	if _, err := os.Stat(f); err != nil {
-		return config{}, err
-	}
-
-	var cfg config
-
-	_, err := toml.DecodeFile(f, &cfg)
-	if err != nil {
-		return config{}, err
-	}
-	return cfg, nil
-}
-
-type statusMsg map[string]int
-
-func (m model) checkServers(d time.Duration) tea.Cmd {
-	return tea.Tick(d, func(t time.Time) tea.Msg {
-		msg := make(statusMsg)
-
-		for _, app := range m.applications {
-			log.Println("checking: ", app.URL)
-			res, err := m.client.Get(app.URL)
-			if err != nil {
-				msg[app.URL] = 0
-				continue
-			}
-			log.Println("res: ", res.StatusCode)
-			msg[app.URL] = res.StatusCode
-		}
-		return msg
-	})
-}
-
-func main() {
 	// ====================================================================
 	// load config file
-	cfg, err := loadConfigFile()
+	cfg, err := loadConfigFile(*config)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -217,6 +58,9 @@ func main() {
 		Timeout: 10 * time.Second,
 	}
 
+	// ====================================================================
+	// debug logging
+
 	if len(os.Getenv("DEBUG")) > 0 {
 		f, err := tea.LogToFile("debug.log", "debug")
 		if err != nil {
@@ -226,6 +70,13 @@ func main() {
 		defer f.Close()
 	}
 
+	appList := list.New(
+		appsToItems(cfg.Applications),
+		list.NewDefaultDelegate(),
+		0,
+		0,
+	)
+
 	initialModel := model{
 		applications: cfg.Applications,
 		metadata: metadata{
@@ -234,12 +85,13 @@ func main() {
 		},
 		client:              httpClient,
 		healthcheckInterval: time.Duration(cfg.HealthCheckInterval) * time.Second,
+		applicationList:     appList,
 	}
 
-	log.Println("starting homie...")
+	initialModel.applicationList.Title = cfg.Title
 
-	p := tea.NewProgram(initialModel)
-	if err := p.Start(); err != nil {
+	p := tea.NewProgram(initialModel, tea.WithAltScreen())
+	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
 	}
 }
