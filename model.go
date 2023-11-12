@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/charmbracelet/bubbles/table"
+	"github.com/charmbracelet/bubbles/list"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -14,9 +15,8 @@ import (
 
 var (
 	// special = lipgloss.AdaptiveColor{Light: "#43BF6D", Dark: "#73F59F"}
-	baseStyle = lipgloss.NewStyle().
-			BorderStyle(lipgloss.NormalBorder()).
-			BorderForeground(lipgloss.Color("240"))
+
+	docStyle = lipgloss.NewStyle().Margin(1, 2)
 
 	detailHeaderStyle = lipgloss.NewStyle().
 				Bold(true).
@@ -54,10 +54,10 @@ type model struct {
 	showPiHoleDetail bool
 	// piHoleSummary store Pi-hole DNS statistics
 	piHoleSummary PiHSummary
-	// appTable is the table model for the applications
-	appTable table.Model
 	// client is the http client used for making calls to the applications
 	client *http.Client
+
+	applicationList list.Model
 }
 
 func (m model) Init() tea.Cmd {
@@ -71,8 +71,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 
 	case tea.WindowSizeMsg:
-		m.viewport.Width = msg.Width
-		m.viewport.Height = msg.Height
+		h, v := docStyle.GetFrameSize()
+		m.applicationList.SetSize(msg.Width-h, msg.Height-v)
 		return m, nil
 
 	case tea.KeyMsg:
@@ -80,14 +80,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		case "enter":
-			if m.appTable.SelectedRow()[1] == "Pi-hole" {
+			log.Println("enter pressed")
+			if m.applicationList.SelectedItem().FilterValue() == "Pi-hole" {
 				m.showPiHoleDetail = true
 				m.piHoleSummary = m.fetchPiHoleStats()
 			}
+
 		case "esc":
 			if m.showPiHoleDetail {
 				m.showPiHoleDetail = false
 			}
+
+			return m, nil
 		}
 
 	case statusMsg:
@@ -102,13 +106,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		m.appTable.SetRows(buildTableRows(m.applications))
+		m.applicationList.SetItems(appsToItems(m.applications))
 
 		return m, m.checkApplications(m.healthcheckInterval)
 	}
 
-	m.appTable, cmd = m.appTable.Update(msg)
-
+	m.applicationList, cmd = m.applicationList.Update(msg)
 	return m, cmd
 }
 
@@ -156,9 +159,7 @@ func (m model) View() string {
 }
 
 func (m *model) applicationsView() string {
-	rows := buildTableRows(m.applications)
-	m.appTable.SetRows(rows)
-	return baseStyle.Render(m.appTable.View()) + "\n"
+	return docStyle.Render(m.applicationList.View())
 }
 
 func (m model) checkApplications(d time.Duration) tea.Cmd {

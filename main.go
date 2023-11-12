@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/peterbourgon/ff/v4"
 	"github.com/peterbourgon/ff/v4/ffhelp"
@@ -57,6 +58,9 @@ func main() {
 		Timeout: 10 * time.Second,
 	}
 
+	// ====================================================================
+	// debug logging
+
 	if len(os.Getenv("DEBUG")) > 0 {
 		f, err := tea.LogToFile("debug.log", "debug")
 		if err != nil {
@@ -66,7 +70,12 @@ func main() {
 		defer f.Close()
 	}
 
-	appTable := buildApplicationTable(cfg.Applications)
+	appList := list.New(
+		appsToItems(cfg.Applications),
+		list.NewDefaultDelegate(),
+		0,
+		0,
+	)
 
 	initialModel := model{
 		applications: cfg.Applications,
@@ -76,10 +85,12 @@ func main() {
 		},
 		client:              httpClient,
 		healthcheckInterval: time.Duration(cfg.HealthCheckInterval) * time.Second,
-		appTable:            appTable,
+		applicationList:     appList,
 	}
 
-	p := tea.NewProgram(initialModel)
+	initialModel.applicationList.Title = cfg.Title
+
+	p := tea.NewProgram(initialModel, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
 	}

@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/charmbracelet/bubbles/table"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/bubbles/list"
 )
 
 // application is a struct that holds the information for self-hosted application
@@ -22,65 +21,22 @@ type application struct {
 }
 
 // Methods to satisfy the list.DefaultItem interface
-func (a application) Title() string       { return a.Name }
-func (a application) Description() string { return a.Descript }
+func (a application) Title() string {
+	statusEmoji := "❌"
+	if a.httpResp.status == http.StatusOK {
+		statusEmoji = "✅"
+	}
+	return fmt.Sprintf("%s %s", statusEmoji, a.Name)
+}
+func (a application) Description() string {
+	return fmt.Sprintf("%s - %s", a.Descript, a.URL)
+}
 func (a application) FilterValue() string { return a.Name }
 
-func buildTableRows(apps []application) []table.Row {
-	rows := make([]table.Row, len(apps))
-
+func appsToItems(apps []application) []list.Item {
+	items := make([]list.Item, len(apps))
 	for i, app := range apps {
-		statusEmoji := "❌"
-		if app.httpResp.status == http.StatusOK {
-			statusEmoji = "✅"
-		}
-
-		status := fmt.Sprintf("%s %d", statusEmoji, app.httpResp.status)
-
-		row := table.Row{
-			status,
-			app.Name,
-			app.URL,
-		}
-
-		rows[i] = row
+		items[i] = app
 	}
-
-	return rows
-}
-
-func buildTableColumns() []table.Column {
-	columns := []table.Column{
-		{Title: "Status", Width: 10},
-		{Title: "Name", Width: 20},
-		{Title: "URL", Width: 70},
-	}
-
-	return columns
-}
-
-func buildApplicationTable(apps []application) table.Model {
-	columns := buildTableColumns()
-	rows := buildTableRows(apps)
-
-	t := table.New(
-		table.WithColumns(columns),
-		table.WithRows(rows),
-		table.WithFocused(true),
-		table.WithHeight(10),
-	)
-
-	s := table.DefaultStyles()
-	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
-		BorderBottom(true).
-		Bold(false)
-	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
-		Bold(true)
-	t.SetStyles(s)
-
-	return t
+	return items
 }
