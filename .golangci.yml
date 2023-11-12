@@ -1,0 +1,45 @@
+linters-settings:
+  gofmt:
+    simplify: true
+  gocritic:
+    enabled-checks:
+      - appendCombine
+      - hugeParam
+      - rangeValCopy
+  golint:
+    min-confidence: 0.8
+  govet:
+    check-shadowing: true
+  gocyclo:
+    min-complexity: 10
+  maligned:
+    suggest-new: true
+  misspell:
+    locale: US
+  lll:
+    line-length: 120
+
+linters:
+  enable:
+    - gofmt
+    - goimports
+    - revive
+    - gocritic
+    - govet
+    - gocyclo
+    - misspell
+    - lll
+  disable:
+    - errcheck
+
+issues:
+  exclude-rules:
+    - linters:
+        - gocritic
+      text: "appendCombine: append result of assignment chain not used"
+    - linters:
+        - golint
+      text: "should have comment or be unexported"
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  new-from-rev: HEAD~

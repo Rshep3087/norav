@@ -162,7 +162,7 @@ func (m *model) applicationsView() string {
 	return docStyle.Render(m.applicationList.View())
 }
 
-func (m model) checkApplications(d time.Duration) tea.Cmd {
+func (m *model) checkApplications(d time.Duration) tea.Cmd {
 	return tea.Tick(d, func(t time.Time) tea.Msg {
 		msg := make(statusMsg)
 
@@ -189,7 +189,7 @@ func (m model) checkApplications(d time.Duration) tea.Cmd {
 }
 
 // fetchPiHoleStats fetches statistics from the Pi-hole instance
-func (m model) fetchPiHoleStats() PiHSummary {
+func (m *model) fetchPiHoleStats() PiHSummary {
 	// Find the Pi-hole application configuration
 	var piHoleApp application
 	for _, app := range m.applications {
