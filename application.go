@@ -13,13 +13,18 @@ import (
 type application struct {
 	Name              string `toml:"name"`
 	URL               string `toml:"url"`
-	Description       string `toml:"description"`
+	Descript          string `toml:"description"`
 	httpResp          httpResp
 	AuthHeader        string `toml:"authHeader"`
 	AuthKey           string `toml:"authKey"`
 	BasicAuthUsername string `toml:"basicAuthUsername"`
 	BasicAuthPassword string `toml:"basicAuthPassword"`
 }
+
+// Methods to satisfy the list.DefaultItem interface
+func (a application) Title() string       { return a.Name }
+func (a application) Description() string { return a.Descript }
+func (a application) FilterValue() string { return a.Name }
 
 func buildTableRows(apps []application) []table.Row {
 	rows := make([]table.Row, len(apps))
