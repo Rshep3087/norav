@@ -15,7 +15,6 @@ import (
 type model struct {
 	// applications is a list of applications to be monitored
 	applications        []application
-	cursor              int
 	metadata            metadata
 	healthcheckInterval time.Duration
 	viewport            viewport.Model
@@ -48,22 +47,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
-		case "up", "k":
-			if m.cursor > 0 {
-				m.cursor--
-				if m.cursor < m.viewport.YOffset {
-					m.viewport.YOffset--
-				}
-			}
-		case "down", "j":
-			if m.cursor < len(m.applications)-1 {
-				m.cursor++
-				if m.cursor >= m.viewport.YOffset+m.viewport.Height {
-					m.viewport.YOffset++
-				}
-			}
 		case "enter":
-			if m.applications[m.cursor].Name == "Pi-hole" {
+			if m.appTable.SelectedRow()[1] == "Pi-hole" {
 				m.showPiHoleDetail = true
 				m.piHoleSummary = m.fetchPiHoleStats()
 			}
@@ -71,8 +56,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.showPiHoleDetail {
 				m.showPiHoleDetail = false
 			}
-		default:
-			return m, nil
 		}
 
 	case statusMsg:
@@ -86,6 +69,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.metadata.status = fmt.Sprintf("%s might be having issues...", app.Name)
 			}
 		}
+
+		m.appTable.SetRows(buildTableRows(m.applications))
+
 		return m, m.checkApplications(m.healthcheckInterval)
 	}
 
