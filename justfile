@@ -1,10 +1,10 @@
 # Default target
-homie: build
-	DEBUG=true ./homie
+norav: build
+	DEBUG=true ./norav
 
 # Build the Go project
 build:
-	go build -o homie .
+	go build -o norav .
 
 # Test the Go project
 test:

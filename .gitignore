@@ -1,8 +1,10 @@
 # builds
 main
-homie
+norav
 
 # logs/debugging
 debug.log
+
+# aider
 .aider*
-.homie.toml
+.norav.toml

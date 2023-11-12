@@ -29,10 +29,10 @@ type metadata struct {
 }
 
 func main() {
-	fs := ff.NewFlagSet("homie")
+	fs := ff.NewFlagSet("norav")
 
 	var (
-		config = fs.String('c', "config", ".homie.toml", "path to config file")
+		config = fs.String('c', "config", ".norav.toml", "path to config file")
 	)
 
 	err := fs.Parse(os.Args[1:])

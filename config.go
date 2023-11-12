@@ -7,9 +7,9 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-// config is a struct that holds homie configuration
+// config is a struct that holds norav configuration
 type config struct {
-	// Title of your homie dashboard
+	// Title of your norav dashboard
 	Title string `toml:"title"`
 	// Applications is a list of applications to be monitored
 	Applications []application `toml:"applications"`
