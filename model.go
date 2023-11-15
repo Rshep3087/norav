@@ -218,7 +218,12 @@ func (m *model) checkApplications(d time.Duration) tea.Cmd {
 
 // fetchPiHoleStats fetches statistics from the Pi-hole instance
 func (m *model) fetchPiHoleStats() PiHSummary {
-	// Find the Pi-hole application configuration
+	// Check if the cache is still valid
+	if time.Since(m.piHoleSummaryCache.Timestamp) < 1*time.Minute {
+		return m.piHoleSummaryCache.Summary
+	}
+
+	// Cache is invalid or empty, fetch new data
 	var piHoleApp application
 	for _, app := range m.applications {
 		if app.Name == "Pi-hole" {
@@ -232,9 +237,16 @@ func (m *model) fetchPiHoleStats() PiHSummary {
 
 	// Set up the Pi-hole connector with the URL and AuthKey from the config
 	piHoleConnector := PiHConnector{
-		Host:  piholeURL,         // Remove "http://" prefix if present
-		Token: piHoleApp.AuthKey, // Use the AuthKey as the token
+		Host:  piholeURL,
+		Token: piHoleApp.AuthKey,
 	}
 	stats := piHoleConnector.Summary()
-	return stats
+
+	// Update the cache with the new data and timestamp
+	m.piHoleSummaryCache = PiHSummaryCache{
+		Summary:   stats,
+		Timestamp: time.Now(),
+	}
+
+	return m.piHoleSummaryCache.Summary
 }
