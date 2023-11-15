@@ -149,8 +149,6 @@ func (m model) View() string {
 	title := titleStyle.Render(m.metadata.title)
 	b.WriteString(title + "\n\n")
 
-	log.Printf("showPiHoleDetail: %v", m.showPiHoleDetail)
-
 	if m.showPiHoleDetail {
 		// Update the table with Pi-hole statistics
 		m.piHoleTable.SetRows([]table.Row{
