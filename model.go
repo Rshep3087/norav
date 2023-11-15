@@ -145,10 +145,14 @@ func (m model) View() string {
 	if m.showPiHoleDetail {
 		// Update the table with Pi-hole statistics
 		m.piHoleTable.SetRows([]table.Row{
+			{"Status", m.piHoleSummary.Status},
 			{"Total Queries", m.piHoleSummary.DNSQueries},
 			{"Queries Blocked", m.piHoleSummary.AdsBlocked},
 			{"Percentage Blocked", m.piHoleSummary.AdsPercentage + "%"},
 			{"Domains on Adlist", m.piHoleSummary.DomainsBlocked},
+			{"Unique Domains", m.piHoleSummary.UniqueDomains},
+			{"Queries Cached", m.piHoleSummary.QueriesCached},
+			{"Clients", m.piHoleSummary.ClientsEverSeen},
 		})
 
 		log.Printf("piHoleSummary: %+v", m.piHoleSummary)
