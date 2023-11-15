@@ -44,18 +44,21 @@ var (
 // model is the bubbletea model
 type model struct {
 	// applications is a list of applications to be monitored
-	applications        []application
-	metadata            metadata
+	applications    []application
+	applicationList list.Model
+
+	metadata metadata
+
 	healthcheckInterval time.Duration
+	client              *http.Client
+
+	// pi hole fields
+	piHoleTable table.Model
 	// showPiHoleDetail is a flag to indicate if the pi hole detailed view should be shown
 	showPiHoleDetail bool
 	// piHoleSummaryCache stores the cached Pi-hole DNS statistics
 	piHoleSummaryCache PiHSummaryCache
 	// client is the http client used for making calls to the applications
-	client *http.Client
-
-	applicationList list.Model
-	piHoleTable     table.Model
 }
 
 // PiHSummaryCache is used to cache the PiHSummary for a duration
