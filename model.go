@@ -78,9 +78,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
+		log.Printf("key pressed: %s", msg.String())
+
 		switch msg.String() {
+
 		case "ctrl+c", "q":
 			return m, tea.Quit
+
 		case "enter":
 			log.Println("enter pressed")
 			if m.applicationList.SelectedItem().FilterValue() == "Pi-hole" {
@@ -94,6 +98,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			return m, nil
+
+		case "j", "down":
+			if m.showPiHoleDetail {
+				m.piHoleTable, cmd = m.piHoleTable.Update(msg)
+				return m, cmd
+			}
+		case "k", "up":
+			if m.showPiHoleDetail {
+				m.piHoleTable, cmd = m.piHoleTable.Update(msg)
+				return m, cmd
+			}
+
 		}
 
 	case statusMsg:
