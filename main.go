@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/peterbourgon/ff/v4"
 	"github.com/peterbourgon/ff/v4/ffhelp"
 )
@@ -77,6 +79,29 @@ func main() {
 		0,
 	)
 
+	piHoleTableColumns := []table.Column{
+		{Title: "Metric", Width: 20},
+		{Title: "Value", Width: 20},
+	}
+
+	piHoleTable := table.New(
+		table.WithColumns(piHoleTableColumns),
+		table.WithFocused(true),
+		table.WithHeight(7),
+	)
+
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240")).
+		BorderBottom(true).
+		Bold(false)
+	s.Selected = s.Selected.
+		Foreground(lipgloss.Color("229")).
+		Background(lipgloss.Color("57")).
+		Bold(false)
+	piHoleTable.SetStyles(s)
+
 	initialModel := model{
 		applications: cfg.Applications,
 		metadata: metadata{
@@ -86,6 +111,7 @@ func main() {
 		client:              httpClient,
 		healthcheckInterval: time.Duration(cfg.HealthCheckInterval) * time.Second,
 		applicationList:     appList,
+		piHoleTable:         piHoleTable,
 	}
 
 	initialModel.applicationList.Title = cfg.Title

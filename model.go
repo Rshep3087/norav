@@ -13,13 +13,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// model is the bubbletea model
-type model struct {
-	// ... other fields ...
-
-	piHoleTable table.Model
-}
-
 var (
 	docStyle = lipgloss.NewStyle().Margin(1, 2)
 
@@ -62,14 +55,16 @@ type model struct {
 	client *http.Client
 
 	applicationList list.Model
+	piHoleTable     table.Model
 }
 
 func (m model) Init() tea.Cmd {
 	m.piHoleTable = table.New()
-	m.piHoleTable.SetHeader([]string{"Metric", "Value"})
+	m.piHoleTable.SetColumns([]table.Column{
+		{Title: "Metric", Width: 20},
+		{Title: "Value", Width: 20},
+	})
 	m.piHoleTable.SetWidth(100)
-	m.piHoleTable.SetStyle(table.StyleLight)
-	m.piHoleTable.BorderStyle(lipgloss.NormalBorder())
 	return m.checkApplications(10 * time.Millisecond)
 }
 
@@ -129,6 +124,8 @@ func (m model) View() string {
 	title := titleStyle.Render(m.metadata.title)
 	b.WriteString(title + "\n\n")
 
+	log.Printf("showPiHoleDetail: %v", m.showPiHoleDetail)
+
 	if m.showPiHoleDetail {
 		// Update the table with Pi-hole statistics
 		m.piHoleTable.SetRows([]table.Row{
@@ -137,6 +134,8 @@ func (m model) View() string {
 			{"Percentage Blocked", m.piHoleSummary.AdsPercentage + "%"},
 			{"Domains on Adlist", m.piHoleSummary.DomainsBlocked},
 		})
+
+		log.Printf("piHoleSummary: %+v", m.piHoleSummary)
 
 		// Render the table
 		return detailHeaderStyle.Render("Pi-hole Detailed View") + "\n\n" + m.piHoleTable.View()
