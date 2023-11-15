@@ -49,13 +49,19 @@ type model struct {
 	healthcheckInterval time.Duration
 	// showPiHoleDetail is a flag to indicate if the pi hole detailed view should be shown
 	showPiHoleDetail bool
-	// piHoleSummary store Pi-hole DNS statistics
-	piHoleSummary PiHSummary
+	// piHoleSummaryCache stores the cached Pi-hole DNS statistics
+	piHoleSummaryCache PiHSummaryCache
 	// client is the http client used for making calls to the applications
 	client *http.Client
 
 	applicationList list.Model
 	piHoleTable     table.Model
+}
+
+// PiHSummaryCache is used to cache the PiHSummary for a duration
+type PiHSummaryCache struct {
+	Summary   PiHSummary
+	Timestamp time.Time
 }
 
 func (m model) Init() tea.Cmd {
@@ -89,7 +95,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			log.Println("enter pressed")
 			if m.applicationList.SelectedItem().FilterValue() == "Pi-hole" {
 				m.showPiHoleDetail = true
-				m.piHoleSummary = m.fetchPiHoleStats()
+				m.piHoleSummaryCache.Summary = m.fetchPiHoleStats()
 			}
 
 		case "esc":
@@ -145,17 +151,15 @@ func (m model) View() string {
 	if m.showPiHoleDetail {
 		// Update the table with Pi-hole statistics
 		m.piHoleTable.SetRows([]table.Row{
-			{"Status", m.piHoleSummary.Status},
-			{"Total Queries", m.piHoleSummary.DNSQueries},
-			{"Queries Blocked", m.piHoleSummary.AdsBlocked},
-			{"Percentage Blocked", m.piHoleSummary.AdsPercentage + "%"},
-			{"Domains on Adlist", m.piHoleSummary.DomainsBlocked},
-			{"Unique Domains", m.piHoleSummary.UniqueDomains},
-			{"Queries Cached", m.piHoleSummary.QueriesCached},
-			{"Clients", m.piHoleSummary.ClientsEverSeen},
+			{"Status", m.piHoleSummaryCache.Summary.Status},
+			{"Total Queries", m.piHoleSummaryCache.Summary.DNSQueries},
+			{"Queries Blocked", m.piHoleSummaryCache.Summary.AdsBlocked},
+			{"Percentage Blocked", m.piHoleSummaryCache.Summary.AdsPercentage + "%"},
+			{"Domains on Adlist", m.piHoleSummaryCache.Summary.DomainsBlocked},
+			{"Unique Domains", m.piHoleSummaryCache.Summary.UniqueDomains},
+			{"Queries Cached", m.piHoleSummaryCache.Summary.QueriesCached},
+			{"Clients", m.piHoleSummaryCache.Summary.ClientsEverSeen},
 		})
-
-		log.Printf("piHoleSummary: %+v", m.piHoleSummary)
 
 		// Render the table
 		return detailHeaderStyle.Render("Pi-hole Detailed View") + "\n\n" + m.piHoleTable.View()
@@ -220,8 +224,11 @@ func (m *model) checkApplications(d time.Duration) tea.Cmd {
 func (m *model) fetchPiHoleStats() PiHSummary {
 	// Check if the cache is still valid
 	if time.Since(m.piHoleSummaryCache.Timestamp) < 1*time.Minute {
+		log.Println("Using cached Pi-hole stats")
 		return m.piHoleSummaryCache.Summary
 	}
+
+	log.Println("Fetching new Pi-hole stats")
 
 	// Cache is invalid or empty, fetch new data
 	var piHoleApp application
