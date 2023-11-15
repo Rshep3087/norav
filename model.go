@@ -8,14 +8,11 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
 var (
-	// special = lipgloss.AdaptiveColor{Light: "#43BF6D", Dark: "#73F59F"}
-
 	docStyle = lipgloss.NewStyle().Margin(1, 2)
 
 	detailHeaderStyle = lipgloss.NewStyle().
@@ -49,7 +46,6 @@ type model struct {
 	applications        []application
 	metadata            metadata
 	healthcheckInterval time.Duration
-	viewport            viewport.Model
 	// showPiHoleDetail is a flag to indicate if the pi hole detailed view should be shown
 	showPiHoleDetail bool
 	// piHoleSummary store Pi-hole DNS statistics
@@ -61,8 +57,6 @@ type model struct {
 }
 
 func (m model) Init() tea.Cmd {
-	m.viewport = viewport.Model{Width: width, Height: 10}
-	m.viewport.YPosition = 0
 	return m.checkApplications(10 * time.Millisecond)
 }
 
@@ -106,9 +100,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		m.applicationList.SetItems(appsToItems(m.applications))
+		cmd = m.applicationList.SetItems(appsToItems(m.applications))
 
-		return m, m.checkApplications(m.healthcheckInterval)
+		return m, tea.Batch(cmd, m.checkApplications(m.healthcheckInterval))
 	}
 
 	m.applicationList, cmd = m.applicationList.Update(msg)
