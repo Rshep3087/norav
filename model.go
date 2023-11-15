@@ -8,9 +8,17 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
+
+// model is the bubbletea model
+type model struct {
+	// ... other fields ...
+
+	piHoleTable table.Model
+}
 
 var (
 	docStyle = lipgloss.NewStyle().Margin(1, 2)
@@ -57,6 +65,11 @@ type model struct {
 }
 
 func (m model) Init() tea.Cmd {
+	m.piHoleTable = table.New()
+	m.piHoleTable.SetHeader([]string{"Metric", "Value"})
+	m.piHoleTable.SetWidth(100)
+	m.piHoleTable.SetStyle(table.StyleLight)
+	m.piHoleTable.BorderStyle(lipgloss.NormalBorder())
 	return m.checkApplications(10 * time.Millisecond)
 }
 
@@ -117,14 +130,16 @@ func (m model) View() string {
 	b.WriteString(title + "\n\n")
 
 	if m.showPiHoleDetail {
-		// Render the detailed page for Pi-hole with actual statistics
-		var piHoleDetailBuilder strings.Builder
-		piHoleDetailBuilder.WriteString(detailHeaderStyle.Render("Pi-hole Detailed View") + "\n\n")
-		piHoleDetailBuilder.WriteString(fmt.Sprintf(detailHeaderStyle.Render("Total Queries: ") + detailDataStyle.Render(m.piHoleSummary.DNSQueries) + "\n"))
-		piHoleDetailBuilder.WriteString(fmt.Sprintf(detailHeaderStyle.Render("Queries Blocked: ") + detailDataStyle.Render(m.piHoleSummary.AdsBlocked) + "\n"))
-		piHoleDetailBuilder.WriteString(fmt.Sprintf(detailHeaderStyle.Render("Percentage Blocked: ") + detailDataStyle.Render(m.piHoleSummary.AdsPercentage+"%%") + "\n"))
-		piHoleDetailBuilder.WriteString(fmt.Sprintf(detailHeaderStyle.Render("Domains on Adlist: ") + detailDataStyle.Render(m.piHoleSummary.DomainsBlocked) + "\n"))
-		return piHoleDetailBuilder.String()
+		// Update the table with Pi-hole statistics
+		m.piHoleTable.SetRows([]table.Row{
+			{"Total Queries", m.piHoleSummary.DNSQueries},
+			{"Queries Blocked", m.piHoleSummary.AdsBlocked},
+			{"Percentage Blocked", m.piHoleSummary.AdsPercentage + "%"},
+			{"Domains on Adlist", m.piHoleSummary.DomainsBlocked},
+		})
+
+		// Render the table
+		return detailHeaderStyle.Render("Pi-hole Detailed View") + "\n\n" + m.piHoleTable.View()
 	}
 
 	b.WriteString(m.applicationsView())
