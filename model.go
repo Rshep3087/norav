@@ -86,6 +86,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.applicationList.SetSize(msg.Width-h, msg.Height-v)
 		return m, nil
 
+	case piHoleSummaryMsg:
+		m.showPiHoleDetail = true
+		m.piHoleSummaryCache.Summary = msg.summary
+		return m, nil
+
 	case tea.KeyMsg:
 		log.Printf("key pressed: %s", msg.String())
 
@@ -95,10 +100,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "enter":
-			log.Println("enter pressed")
 			if m.applicationList.SelectedItem().FilterValue() == "Pi-hole" {
-				m.showPiHoleDetail = true
-				m.piHoleSummaryCache.Summary = m.fetchPiHoleStats()
+				return m, m.fetchPiHoleStats
 			}
 
 		case "esc":
@@ -221,12 +224,16 @@ func (m *model) checkApplications(d time.Duration) tea.Cmd {
 	})
 }
 
+type piHoleSummaryMsg struct {
+	summary PiHSummary
+}
+
 // fetchPiHoleStats fetches statistics from the Pi-hole instance
-func (m *model) fetchPiHoleStats() PiHSummary {
+func (m *model) fetchPiHoleStats() tea.Msg {
 	// Check if the cache is still valid
 	if time.Since(m.piHoleSummaryCache.Timestamp) < 1*time.Minute {
 		log.Println("Using cached Pi-hole stats")
-		return m.piHoleSummaryCache.Summary
+		return piHoleSummaryMsg{summary: m.piHoleSummaryCache.Summary}
 	}
 
 	log.Println("Fetching new Pi-hole stats")
@@ -256,5 +263,5 @@ func (m *model) fetchPiHoleStats() PiHSummary {
 		Timestamp: time.Now(),
 	}
 
-	return m.piHoleSummaryCache.Summary
+	return piHoleSummaryMsg{summary: stats}
 }
