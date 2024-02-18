@@ -118,7 +118,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.sonarrSeriesList = list.New(items, list.NewDefaultDelegate(), 0, 0)
 
-		m.sonarrSeriesList.SetSize(m.windowSize.Width, m.windowSize.Height)
+		h, v := docStyle.GetFrameSize()
+		m.sonarrSeriesList.SetSize(m.windowSize.Width-h, m.windowSize.Height-v)
 
 		return m, nil
 
