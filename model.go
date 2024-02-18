@@ -272,8 +272,12 @@ func (m *model) checkApplications(d time.Duration) tea.Cmd {
 
 			res, err := m.httpClient.Do(req)
 			if err != nil {
+				log.Printf("Error fetching %s: %s", app.URL, err)
 				msg[app.URL] = 0
 				continue
+			}
+			if res.StatusCode != http.StatusOK {
+				log.Printf("Error fetching %s: %s", app.URL, res.Status)
 			}
 			msg[app.URL] = res.StatusCode
 		}
