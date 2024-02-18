@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/rshep3087/norav/sonarr"
 )
 
 var (
@@ -50,15 +51,28 @@ type model struct {
 	metadata metadata
 
 	healthcheckInterval time.Duration
-	client              *http.Client
+	// client is the http client used for making calls to the applications
+	httpClient *http.Client
 
 	// pi hole fields
 	piHoleTable table.Model
-	// showPiHoleDetail is a flag to indicate if the pi hole detailed view should be shown
-	showPiHoleDetail bool
 	// piHoleSummaryCache stores the cached Pi-hole DNS statistics
 	piHoleSummaryCache PiHSummaryCache
-	// client is the http client used for making calls to the applications
+	// showPiHoleDetail is a flag to indicate if the pi hole detailed view should be shown
+	showPiHoleDetail bool
+
+	// showSonarrDetail is a flag to indicate if the sonarr detailed view should be shown
+	showSonarrDetail bool
+	// sonarrSeries is the list of series from the Sonarr instance
+	sonarrSeriesList list.Model
+
+	// windowSize is the size of the terminal window
+	windowSize windowSize
+}
+
+type windowSize struct {
+	Width  int
+	Height int
 }
 
 // PiHSummaryCache is used to cache the PiHSummary for a duration
@@ -84,11 +98,28 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		h, v := docStyle.GetFrameSize()
 		m.applicationList.SetSize(msg.Width-h, msg.Height-v)
+
+		m.windowSize = windowSize{Width: msg.Width, Height: msg.Height}
+
 		return m, nil
 
 	case piHoleSummaryMsg:
 		m.showPiHoleDetail = true
 		m.piHoleSummaryCache.Summary = msg.summary
+		return m, nil
+
+	case SeriesResourceMsg:
+		m.showSonarrDetail = true
+
+		items := make([]list.Item, len(msg.SeriesResources))
+		for i := range msg.SeriesResources {
+			items[i] = &msg.SeriesResources[i]
+		}
+
+		m.sonarrSeriesList = list.New(items, list.NewDefaultDelegate(), 0, 0)
+
+		m.sonarrSeriesList.SetSize(m.windowSize.Width, m.windowSize.Height)
+
 		return m, nil
 
 	case tea.KeyMsg:
@@ -100,13 +131,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "enter":
+			log.Printf("Selected application: %s", m.applicationList.SelectedItem().FilterValue())
 			if m.applicationList.SelectedItem().FilterValue() == "Pi-hole" {
 				return m, m.fetchPiHoleStats
+			}
+
+			if m.applicationList.SelectedItem().FilterValue() == "Sonarr" {
+				log.Println("Fetching Sonarr series")
+				return m, m.fetchSonarrSeries
 			}
 
 		case "esc":
 			if m.showPiHoleDetail {
 				m.showPiHoleDetail = false
+			}
+
+			if m.showSonarrDetail {
+				m.showSonarrDetail = false
 			}
 
 			return m, nil
@@ -116,12 +157,22 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.piHoleTable, cmd = m.piHoleTable.Update(msg)
 				return m, cmd
 			}
+			if m.showSonarrDetail {
+				m.sonarrSeriesList, cmd = m.sonarrSeriesList.Update(msg)
+				return m, cmd
+			}
+
 		case "k", "up":
 			if m.showPiHoleDetail {
 				m.piHoleTable, cmd = m.piHoleTable.Update(msg)
 				return m, cmd
 			}
 
+			if m.showSonarrDetail {
+				m.sonarrSeriesList, cmd = m.sonarrSeriesList.Update(msg)
+
+				return m, cmd
+			}
 		}
 
 	case statusMsg:
@@ -169,6 +220,11 @@ func (m model) View() string {
 		return detailHeaderStyle.Render("Pi-hole Detailed View") + "\n\n" + m.piHoleTable.View()
 	}
 
+	if m.showSonarrDetail {
+		log.Println("rendering Sonarr detailed view")
+		return docStyle.Render(m.sonarrSeriesList.View())
+	}
+
 	b.WriteString(m.applicationsView())
 
 	// Check if all applications are good
@@ -213,7 +269,7 @@ func (m *model) checkApplications(d time.Duration) tea.Cmd {
 				req.Header.Add(app.AuthHeader, app.AuthKey)
 			}
 
-			res, err := m.client.Do(req)
+			res, err := m.httpClient.Do(req)
 			if err != nil {
 				msg[app.URL] = 0
 				continue
@@ -264,4 +320,20 @@ func (m *model) fetchPiHoleStats() tea.Msg {
 	}
 
 	return piHoleSummaryMsg{summary: stats}
+}
+
+type SeriesResourceMsg sonarr.Series
+
+// fetchSonarrSeries fetches the series from the Sonarr instance
+func (m *model) fetchSonarrSeries() tea.Msg {
+	sonarrCfg := m.applicationList.SelectedItem().(application)
+
+	sonarrClient := sonarr.NewClient(sonarrCfg.URL, sonarrCfg.AuthKey)
+	series, err := sonarrClient.GetSeries()
+	if err != nil {
+		log.Println(err)
+		return nil
+	}
+
+	return SeriesResourceMsg(*series)
 }

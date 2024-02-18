@@ -108,7 +108,7 @@ func main() {
 			title:  cfg.Title,
 			status: "loading...",
 		},
-		client:              httpClient,
+		httpClient:          httpClient,
 		healthcheckInterval: time.Duration(cfg.HealthCheckInterval) * time.Second,
 		applicationList:     appList,
 		piHoleTable:         piHoleTable,
