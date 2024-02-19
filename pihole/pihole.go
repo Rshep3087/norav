@@ -9,6 +9,71 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
+// msg types for Update
+type (
+	// piHoleStatusMsg is a message that contains the status of the Pi-hole instance
+	piHoleStatusMsg string // "✅" or "❌"
+
+	// piHoleSummaryMsg is a message that contains the summary of the Pi-hole instance
+	piHoleSummaryMsg struct {
+		summary PiHSummary
+	}
+)
+
+// Model represents the Pi-hole model
+type Model struct {
+	// name is the name of the Pi-hole instance
+	name string
+	// host is the DNS or IP address of the Pi-hole instance
+	host string
+	// apiKey is the API Token (available in the Pi-Hole web interface)
+	apiKey string
+	// description is the description of the Pi-hole instance
+	description string
+	// active is a flag to indicate if the application is active
+	active bool
+	// healthStatus is the status of the Pi-hole instance
+	healthStatus string
+	// table is the table to display the Pi-hole summary
+	table table.Model
+}
+
+// NewModel returns a new Pi-hole model
+func NewModel(cfg Config) *Model {
+	m := Model{
+		name:        "Pi-hole",
+		host:        cfg.Host,
+		apiKey:      cfg.APIKey,
+		description: "Network-wide ad blocking via your own Linux hardware",
+		active:      false,
+	}
+	columns := []table.Column{
+		{Title: "Metric", Width: 20},
+		{Title: "Value", Width: 20},
+	}
+
+	m.table = table.New(
+		table.WithColumns(columns),
+		table.WithHeight(10),
+	)
+
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240")).
+		BorderBottom(true).
+		Bold(false)
+	s.Selected = s.Selected.
+		Foreground(lipgloss.Color("229")).
+		Background(lipgloss.Color("57")).
+		Bold(false)
+	m.table.SetStyles(s)
+
+	return &m
+}
+
+// Title returns the title of the Pi-hole instance
+// Satisfaction of the tea.ItemDelegate interface
 func (m *Model) Title() string       { return m.name }
 func (m *Model) Description() string { return fmt.Sprintf("%s - %s", m.healthStatus, m.description) }
 
@@ -24,14 +89,12 @@ func (m *Model) FetchPiHoleStats() tea.Msg {
 	return piHoleSummaryMsg{summary: stats}
 }
 
+// Init returns the initial command of the Pi-hole model
 func (m *Model) Init() tea.Cmd {
 	return nil
 }
 
-type piHoleSummaryMsg struct {
-	summary PiHSummary
-}
-
+// Update updates the Pi-hole model
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
@@ -69,12 +132,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
+// View returns the view of the Pi-hole model
 func (m *Model) View() string {
 	return m.table.View()
 }
 
-type piHoleStatusMsg string // "✅" or "❌"
-
+// FilterValue returns the name of the Pi-hole instance
+// Satisfaction of the tea.Item interface
 func (m *Model) FilterValue() string { return m.name }
 
 // FetchStatus fetches the status of the Pi-hole instance
@@ -101,53 +165,3 @@ func (m *Model) FetchStatus() tea.Cmd {
 
 // SetActive sets the active flag
 func (a *Model) SetActive(b bool) { a.active = b }
-
-type Config struct {
-	Host        string `toml:"host"`
-	Name        string `toml:"name"`
-	Description string `toml:"description"`
-	APIKey      string `toml:"apiKey"`
-}
-type Model struct {
-	name        string
-	host        string
-	apiKey      string
-	description string
-	// active is a flag to indicate if the application is active
-	active       bool
-	healthStatus string
-	table        table.Model
-}
-
-func NewApplication(cfg Config) *Model {
-	m := Model{
-		name:        "Pi-hole",
-		host:        cfg.Host,
-		apiKey:      cfg.APIKey,
-		description: "Network-wide ad blocking via your own Linux hardware",
-		active:      false,
-	}
-	columns := []table.Column{
-		{Title: "Metric", Width: 20},
-		{Title: "Value", Width: 20},
-	}
-
-	m.table = table.New(
-		table.WithColumns(columns),
-		table.WithHeight(10),
-	)
-
-	s := table.DefaultStyles()
-	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
-		BorderBottom(true).
-		Bold(false)
-	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
-		Bold(false)
-	m.table.SetStyles(s)
-
-	return &m
-}

@@ -86,7 +86,7 @@ func main() {
 
 	var apps []Application
 	if cfg.PiHole != nil {
-		piholeApp := pihole.NewApplication(*cfg.PiHole)
+		piholeApp := pihole.NewModel(*cfg.PiHole)
 		apps = append(apps, piholeApp)
 	}
 
