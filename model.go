@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"net/http"
 	"strings"
 	"time"
 
@@ -61,8 +60,6 @@ type model struct {
 	metadata metadata
 
 	healthcheckInterval time.Duration
-	// client is the http client used for making calls to the applications
-	httpClient *http.Client
 
 	// showSonarrDetail is a flag to indicate if the sonarr detailed view should be shown
 	showSonarrDetail bool

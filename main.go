@@ -4,14 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"time"
 
 	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/peterbourgon/ff/v4"
 	"github.com/peterbourgon/ff/v4/ffhelp"
 	"github.com/rshep3087/norav/pihole"
@@ -57,9 +54,6 @@ func main() {
 
 	// ====================================================================
 	// clients
-	httpClient := &http.Client{
-		Timeout: 10 * time.Second,
-	}
 
 	// ====================================================================
 	// debug logging
@@ -73,26 +67,10 @@ func main() {
 		defer f.Close()
 	}
 
-	s := table.DefaultStyles()
-	s.Header = s.Header.
-		BorderStyle(lipgloss.NormalBorder()).
-		BorderForeground(lipgloss.Color("240")).
-		BorderBottom(true).
-		Bold(false)
-	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("229")).
-		Background(lipgloss.Color("57")).
-		Bold(false)
-
-	var apps []Application
+	var listItems []list.Item
 	if cfg.PiHole != nil {
 		piholeApp := pihole.NewModel(*cfg.PiHole)
-		apps = append(apps, piholeApp)
-	}
-
-	var listItems []list.Item
-	for _, app := range apps {
-		listItems = append(listItems, app)
+		listItems = append(listItems, piholeApp)
 	}
 
 	appList := list.New(
@@ -107,7 +85,6 @@ func main() {
 			title:  cfg.Title,
 			status: "loading...",
 		},
-		httpClient:          httpClient,
 		healthcheckInterval: time.Duration(cfg.HealthCheckInterval) * time.Second,
 		applicationList:     appList,
 	}
