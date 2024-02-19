@@ -128,11 +128,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "enter":
+			m.deactivateAll()
 			// change the state to the selected application
 			m.state = chooseState(m.applicationList.SelectedItem())
 
 			log.Printf("Selected application: %s", m.applicationList.SelectedItem().FilterValue())
 			if m.state == StatePiHole {
+				m.pihole.SetActive(true)
 				return m, m.pihole.FetchPiHoleStats
 			}
 
@@ -168,8 +170,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	m.pihole, cmd = m.pihole.Update(msg)
 	cmds = append(cmds, cmd)
 
-	m.applicationList, cmd = m.applicationList.Update(msg)
+	if m.state == StateNormal {
+		log.Println("Updating application list")
+		m.applicationList, cmd = m.applicationList.Update(msg)
+		cmds = append(cmds, cmd)
+	}
+
 	return m, tea.Batch(cmds...)
+}
+
+func (m *model) deactivateAll() {
+	m.pihole.SetActive(false)
 }
 
 func chooseState(item list.Item) noravState {
