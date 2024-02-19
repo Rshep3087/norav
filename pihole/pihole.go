@@ -1,15 +1,118 @@
-package main
+package pihole
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"sort"
 	"strconv"
+
+	"github.com/charmbracelet/bubbles/table"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
+
+type Config struct {
+	Host        string `toml:"host"`
+	Name        string `toml:"name"`
+	Description string `toml:"description"`
+	APIKey      string `toml:"apiKey"`
+}
+
+type Model struct {
+	name         string
+	healthStatus string
+	table        table.Model
+	cfg          Config
+}
+
+// fetchPiHoleStats fetches statistics from the Pi-hole instance
+func (m *Model) FetchPiHoleStats() tea.Msg {
+	log.Println("Fetching new Pi-hole stats")
+	defer log.Println("Fetched new Pi-hole stats")
+
+	// Set up the Pi-hole connector with the URL and AuthKey from the config
+	piHoleConnector := PiHConnector{
+		Host:  m.cfg.Host,
+		Token: m.cfg.APIKey,
+	}
+	stats := piHoleConnector.Summary()
+
+	return piHoleSummaryMsg{summary: stats}
+}
+
+func (m Model) Init() tea.Cmd {
+	return nil
+}
+
+type piHoleSummaryMsg struct {
+	summary PiHSummary
+}
+
+func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case piHoleSummaryMsg:
+		log.Println("Updating Pi-hole stats")
+		defer log.Println("Updated Pi-hole stats")
+		m.table.SetRows([]table.Row{
+			{"Ads Blocked", msg.summary.AdsBlocked},
+			{"Ads Percentage", msg.summary.AdsPercentage},
+			{"Clients Ever Seen", msg.summary.ClientsEverSeen},
+			{"DNS Queries", msg.summary.DNSQueries},
+			{"Domains Blocked", msg.summary.DomainsBlocked},
+		})
+		return m, nil
+	}
+
+	return m, nil
+}
+
+func (m Model) View() string {
+	return m.table.View()
+}
+
+func NewApplication(cfg Config) Model {
+	m := Model{
+		cfg: cfg,
+	}
+	columns := []table.Column{
+		{Title: "Metric", Width: 20},
+		{Title: "Value", Width: 20},
+	}
+
+	m.table = table.New(
+		table.WithColumns(columns),
+		table.WithHeight(10),
+	)
+
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240")).
+		BorderBottom(true).
+		Bold(false)
+	s.Selected = s.Selected.
+		Foreground(lipgloss.Color("229")).
+		Background(lipgloss.Color("57")).
+		Bold(false)
+	m.table.SetStyles(s)
+
+	return m
+}
+
+func (a *Model) HealthCheck() error {
+
+	a.healthStatus = "Looking good..."
+
+	return nil
+}
+
+func (a *Model) HealthStatus() string { return "" }
+
+func (a *Model) Name() string { return a.name }
 
 // PiHConnector represents base API connector type.
 // Host: DNS or IP address of your Pi-Hole
@@ -75,17 +178,21 @@ type PiHQueryTypes struct {
 // PiHQueries contains all DNS queries.
 // This is slice of slices of strings.
 // Each slice contains: timestamp of query, type of query (IPv4, IPv6), requested DNS, requesting client, answer type.
-// Answer types: 1 = blocked by gravity.list, 2 = forwarded to upstream server, 3 = answered by local cache, 4 = blocked by wildcard blocking
 type PiHQueries struct {
 	Data [][]string `json:"data"`
 }
 
 // Get performes API request. Returns slice of bytes.
 func (ph *PiHConnector) Get(endpoint string) []byte {
-	var requestString = "http://" + ph.Host + "/admin/api.php?" + endpoint
+	log.Printf("Fetching data from Pi-hole API: %s", endpoint)
+	defer log.Printf("Fetched data from Pi-hole API: %s", endpoint)
+
+	var requestString = ph.Host + "/admin/api.php?" + endpoint
 	if ph.Token != "" {
 		requestString += "&auth=" + ph.Token
 	}
+
+	log.Printf("Requesting: %s", requestString)
 
 	resp, err := http.Get(requestString)
 	if err != nil {
@@ -93,7 +200,7 @@ func (ph *PiHConnector) Get(endpoint string) []byte {
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -128,8 +235,8 @@ func (ph *PiHConnector) Version() PiHVersion {
 // Summary returns statistics in formatted style.
 func (ph *PiHConnector) Summary() PiHSummary {
 	bs := ph.Get("summary")
-	s := &PiHSummary{}
 
+	s := &PiHSummary{}
 	err := json.Unmarshal(bs, s)
 	if err != nil {
 		log.Fatal(err)

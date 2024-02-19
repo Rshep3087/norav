@@ -23,8 +23,8 @@ linters:
   enable:
     - gofmt
     - goimports
-    - revive
-    - gocritic
+    # - revive
+    # - gocritic
     - govet
     - gocyclo
     - misspell

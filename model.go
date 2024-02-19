@@ -8,10 +8,21 @@ import (
 	"time"
 
 	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/rshep3087/norav/pihole"
 	"github.com/rshep3087/norav/sonarr"
+)
+
+type noravState int
+
+const (
+	// StateNormal is the default state
+	StateNormal noravState = iota
+	// StatePiHole is the state for the Pi-hole detailed view
+	StatePiHole
+	// StateSonarr is the state for the Sonarr detailed view
+	StateSonarr
 )
 
 var (
@@ -44,6 +55,8 @@ var (
 
 // model is the bubbletea model
 type model struct {
+	// state is the current state of the application
+	state noravState
 	// applications is a list of applications to be monitored
 	applications    []application
 	applicationList list.Model
@@ -54,13 +67,6 @@ type model struct {
 	// client is the http client used for making calls to the applications
 	httpClient *http.Client
 
-	// pi hole fields
-	piHoleTable table.Model
-	// piHoleSummaryCache stores the cached Pi-hole DNS statistics
-	piHoleSummaryCache PiHSummaryCache
-	// showPiHoleDetail is a flag to indicate if the pi hole detailed view should be shown
-	showPiHoleDetail bool
-
 	// showSonarrDetail is a flag to indicate if the sonarr detailed view should be shown
 	showSonarrDetail bool
 	// sonarrSeries is the list of series from the Sonarr instance
@@ -68,6 +74,9 @@ type model struct {
 
 	// windowSize is the size of the terminal window
 	windowSize windowSize
+
+	// pihole is the Pi-hole model
+	pihole pihole.Model
 }
 
 type windowSize struct {
@@ -75,24 +84,16 @@ type windowSize struct {
 	Height int
 }
 
-// PiHSummaryCache is used to cache the PiHSummary for a duration
-type PiHSummaryCache struct {
-	Summary   PiHSummary
-	Timestamp time.Time
-}
-
 func (m model) Init() tea.Cmd {
-	m.piHoleTable = table.New()
-	m.piHoleTable.SetColumns([]table.Column{
-		{Title: "Metric", Width: 20},
-		{Title: "Value", Width: 20},
-	})
-	m.piHoleTable.SetWidth(100)
 	return m.checkApplications(10 * time.Millisecond)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
+	var (
+		cmd  tea.Cmd
+		cmds []tea.Cmd
+	)
+
 	switch msg := msg.(type) {
 
 	case tea.WindowSizeMsg:
@@ -101,11 +102,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.windowSize = windowSize{Width: msg.Width, Height: msg.Height}
 
-		return m, nil
-
-	case piHoleSummaryMsg:
-		m.showPiHoleDetail = true
-		m.piHoleSummaryCache.Summary = msg.summary
 		return m, nil
 
 	case SeriesResourceMsg:
@@ -132,48 +128,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "enter":
+			// change the state to the selected application
+			m.state = chooseState(m.applicationList.SelectedItem())
+
 			log.Printf("Selected application: %s", m.applicationList.SelectedItem().FilterValue())
-			if m.applicationList.SelectedItem().FilterValue() == "Pi-hole" {
-				return m, m.fetchPiHoleStats
+			if m.state == StatePiHole {
+				return m, m.pihole.FetchPiHoleStats
 			}
 
 			if m.applicationList.SelectedItem().FilterValue() == "Sonarr" {
-				log.Println("Fetching Sonarr series")
 				return m, m.fetchSonarrSeries
 			}
 
 		case "esc":
-			if m.showPiHoleDetail {
-				m.showPiHoleDetail = false
-			}
-
-			if m.showSonarrDetail {
-				m.showSonarrDetail = false
-			}
-
+			m.state = StateNormal
 			return m, nil
-
-		case "j", "down":
-			if m.showPiHoleDetail {
-				m.piHoleTable, cmd = m.piHoleTable.Update(msg)
-				return m, cmd
-			}
-			if m.showSonarrDetail {
-				m.sonarrSeriesList, cmd = m.sonarrSeriesList.Update(msg)
-				return m, cmd
-			}
-
-		case "k", "up":
-			if m.showPiHoleDetail {
-				m.piHoleTable, cmd = m.piHoleTable.Update(msg)
-				return m, cmd
-			}
-
-			if m.showSonarrDetail {
-				m.sonarrSeriesList, cmd = m.sonarrSeriesList.Update(msg)
-
-				return m, cmd
-			}
 		}
 
 	case statusMsg:
@@ -189,42 +158,63 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		cmd = m.applicationList.SetItems(appsToItems(m.applications))
+		cmds = append(cmds, cmd)
 
-		return m, tea.Batch(cmd, m.checkApplications(m.healthcheckInterval))
+		cmd = m.checkApplications(m.healthcheckInterval)
+		cmds = append(cmds, cmd)
+
 	}
 
+	m.pihole, cmd = m.pihole.Update(msg)
+	cmds = append(cmds, cmd)
+
 	m.applicationList, cmd = m.applicationList.Update(msg)
-	return m, cmd
+	return m, tea.Batch(cmds...)
+}
+
+func chooseState(item list.Item) noravState {
+	switch item.FilterValue() {
+	case "Pi-hole":
+		return StatePiHole
+	case "Sonarr":
+		return StateSonarr
+	default:
+		return StateNormal
+	}
 }
 
 func (m model) View() string {
+
+	switch m.state {
+	case StatePiHole:
+		return m.pihole.View()
+	}
+
+	// if m.showPiHoleDetail {
+	// 	// Update the table with Pi-hole statistics
+	// 	m.piHoleTable.SetRows([]table.Row{
+	// 		{"Status", m.piHoleSummaryCache.Summary.Status},
+	// 		{"Total Queries", m.piHoleSummaryCache.Summary.DNSQueries},
+	// 		{"Queries Blocked", m.piHoleSummaryCache.Summary.AdsBlocked},
+	// 		{"Percentage Blocked", m.piHoleSummaryCache.Summary.AdsPercentage + "%"},
+	// 		{"Domains on Adlist", m.piHoleSummaryCache.Summary.DomainsBlocked},
+	// 		{"Unique Domains", m.piHoleSummaryCache.Summary.UniqueDomains},
+	// 		{"Queries Cached", m.piHoleSummaryCache.Summary.QueriesCached},
+	// 		{"Clients", m.piHoleSummaryCache.Summary.ClientsEverSeen},
+	// 	})
+
+	// 	// Render the table
+	// 	return detailHeaderStyle.Render("Pi-hole Detailed View") + "\n\n" + m.piHoleTable.View()
+	// }
+
+	if m.showSonarrDetail {
+		return docStyle.Render(m.sonarrSeriesList.View())
+	}
 	var b strings.Builder
 
 	// Apply titleStyle to the title and add it to the top of the view
 	title := titleStyle.Render(m.metadata.title)
 	b.WriteString(title + "\n\n")
-
-	if m.showPiHoleDetail {
-		// Update the table with Pi-hole statistics
-		m.piHoleTable.SetRows([]table.Row{
-			{"Status", m.piHoleSummaryCache.Summary.Status},
-			{"Total Queries", m.piHoleSummaryCache.Summary.DNSQueries},
-			{"Queries Blocked", m.piHoleSummaryCache.Summary.AdsBlocked},
-			{"Percentage Blocked", m.piHoleSummaryCache.Summary.AdsPercentage + "%"},
-			{"Domains on Adlist", m.piHoleSummaryCache.Summary.DomainsBlocked},
-			{"Unique Domains", m.piHoleSummaryCache.Summary.UniqueDomains},
-			{"Queries Cached", m.piHoleSummaryCache.Summary.QueriesCached},
-			{"Clients", m.piHoleSummaryCache.Summary.ClientsEverSeen},
-		})
-
-		// Render the table
-		return detailHeaderStyle.Render("Pi-hole Detailed View") + "\n\n" + m.piHoleTable.View()
-	}
-
-	if m.showSonarrDetail {
-		log.Println("rendering Sonarr detailed view")
-		return docStyle.Render(m.sonarrSeriesList.View())
-	}
 
 	b.WriteString(m.applicationsView())
 
@@ -285,48 +275,6 @@ func (m *model) checkApplications(d time.Duration) tea.Cmd {
 	})
 }
 
-type piHoleSummaryMsg struct {
-	summary PiHSummary
-}
-
-// fetchPiHoleStats fetches statistics from the Pi-hole instance
-func (m *model) fetchPiHoleStats() tea.Msg {
-	// Check if the cache is still valid
-	if time.Since(m.piHoleSummaryCache.Timestamp) < 1*time.Minute {
-		log.Println("Using cached Pi-hole stats")
-		return piHoleSummaryMsg{summary: m.piHoleSummaryCache.Summary}
-	}
-
-	log.Println("Fetching new Pi-hole stats")
-
-	// Cache is invalid or empty, fetch new data
-	var piHoleApp application
-	for _, app := range m.applications {
-		if app.Name == "Pi-hole" {
-			piHoleApp = app
-			break
-		}
-	}
-
-	piholeURL := strings.TrimPrefix(piHoleApp.URL, "http://") // Remove "http://" prefix if present
-	piholeURL = strings.TrimSuffix(piholeURL, "/admin/")      // Remove "/admin" suffix if present
-
-	// Set up the Pi-hole connector with the URL and AuthKey from the config
-	piHoleConnector := PiHConnector{
-		Host:  piholeURL,
-		Token: piHoleApp.AuthKey,
-	}
-	stats := piHoleConnector.Summary()
-
-	// Update the cache with the new data and timestamp
-	m.piHoleSummaryCache = PiHSummaryCache{
-		Summary:   stats,
-		Timestamp: time.Now(),
-	}
-
-	return piHoleSummaryMsg{summary: stats}
-}
-
 type SeriesResourceMsg sonarr.Series
 
 // fetchSonarrSeries fetches the series from the Sonarr instance
@@ -336,7 +284,7 @@ func (m *model) fetchSonarrSeries() tea.Msg {
 	sonarrClient := sonarr.NewClient(sonarrCfg.URL, sonarrCfg.AuthKey)
 	series, err := sonarrClient.GetSeries()
 	if err != nil {
-		log.Println(err)
+		log.Printf("Error fetching series from Sonarr: %s", err)
 		return nil
 	}
 

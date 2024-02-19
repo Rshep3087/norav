@@ -14,6 +14,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/peterbourgon/ff/v4"
 	"github.com/peterbourgon/ff/v4/ffhelp"
+	"github.com/rshep3087/norav/pihole"
 )
 
 const (
@@ -79,17 +80,6 @@ func main() {
 		0,
 	)
 
-	piHoleTableColumns := []table.Column{
-		{Title: "Metric", Width: 20},
-		{Title: "Value", Width: 20},
-	}
-
-	piHoleTable := table.New(
-		table.WithColumns(piHoleTableColumns),
-		table.WithFocused(true),
-		table.WithHeight(7),
-	)
-
 	s := table.DefaultStyles()
 	s.Header = s.Header.
 		BorderStyle(lipgloss.NormalBorder()).
@@ -100,7 +90,6 @@ func main() {
 		Foreground(lipgloss.Color("229")).
 		Background(lipgloss.Color("57")).
 		Bold(false)
-	piHoleTable.SetStyles(s)
 
 	initialModel := model{
 		applications: cfg.Applications,
@@ -111,7 +100,12 @@ func main() {
 		httpClient:          httpClient,
 		healthcheckInterval: time.Duration(cfg.HealthCheckInterval) * time.Second,
 		applicationList:     appList,
-		piHoleTable:         piHoleTable,
+		pihole: pihole.NewApplication(
+			pihole.Config{
+				Host:   "http://hp-ubuntu",
+				APIKey: "8bda4efbe21b7ea71d80fdf5eb8d4258cbc8ef1317e4eaa9f471ac6f4ca3b086",
+			},
+		),
 	}
 
 	initialModel.applicationList.Title = cfg.Title
