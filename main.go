@@ -12,6 +12,7 @@ import (
 	"github.com/peterbourgon/ff/v4"
 	"github.com/peterbourgon/ff/v4/ffhelp"
 	"github.com/rshep3087/norav/pihole"
+	"github.com/rshep3087/norav/sonarr"
 )
 
 const (
@@ -53,9 +54,6 @@ func main() {
 	}
 
 	// ====================================================================
-	// clients
-
-	// ====================================================================
 	// debug logging
 
 	if len(os.Getenv("DEBUG")) > 0 {
@@ -69,8 +67,15 @@ func main() {
 
 	var listItems []list.Item
 	if cfg.PiHole != nil {
+		log.Println("adding pihole")
 		piholeApp := pihole.NewModel(*cfg.PiHole)
 		listItems = append(listItems, piholeApp)
+	}
+
+	if cfg.Sonarr != nil {
+		log.Println("adding sonarr")
+		sonarrApp := sonarr.NewModel(*cfg.Sonarr)
+		listItems = append(listItems, sonarrApp)
 	}
 
 	appList := list.New(
