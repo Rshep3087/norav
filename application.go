@@ -10,6 +10,9 @@ type Application interface {
 
 	// FetchStatus fetches the status of the application
 	FetchStatus() tea.Cmd
+
+	// SetActive sets the state of the application
+	SetActive(bool)
 }
 
 // // Methods to satisfy the list.DefaultItem interface

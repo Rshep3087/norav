@@ -71,9 +71,6 @@ type model struct {
 
 	// windowSize is the size of the terminal window
 	windowSize windowSize
-
-	// pihole is the Pi-hole model
-	pihole pihole.Model
 }
 
 type windowSize struct {
@@ -151,8 +148,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			log.Printf("Selected application: %s", m.applicationList.SelectedItem().FilterValue())
 			if m.state == StatePiHole {
-				m.pihole.SetActive(true)
-				return m, m.pihole.FetchPiHoleStats
+				pihole := m.applicationList.SelectedItem().(*pihole.Model)
+
+				pihole.SetActive(true)
+				return m, pihole.FetchPiHoleStats
 			}
 
 			// if m.applicationList.SelectedItem().FilterValue() == "Sonarr" {
@@ -171,12 +170,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, cmd)
 	}
 
-	m.pihole, cmd = m.pihole.Update(msg)
-	cmds = append(cmds, cmd)
-
 	if m.state == StateNormal {
 		log.Println("Updating application list")
 		m.applicationList, cmd = m.applicationList.Update(msg)
+		cmds = append(cmds, cmd)
+	}
+
+	for _, item := range m.applicationList.Items() {
+		app, ok := item.(tea.Model)
+		if !ok {
+			log.Printf("Item %s is not an tea.Model", item.FilterValue())
+			continue
+		}
+		_, cmd = app.Update(msg)
 		cmds = append(cmds, cmd)
 	}
 
@@ -184,7 +190,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *model) deactivateAll() {
-	m.pihole.SetActive(false)
+	for _, item := range m.applicationList.Items() {
+		app, ok := item.(Application)
+		if !ok {
+			continue
+		}
+		app.SetActive(false)
+	}
 }
 
 func chooseState(item list.Item) noravState {
@@ -202,7 +214,8 @@ func (m model) View() string {
 
 	switch m.state {
 	case StatePiHole:
-		return m.pihole.View()
+		pihole := m.applicationList.SelectedItem().(*pihole.Model)
+		return pihole.View()
 	}
 
 	// if m.showPiHoleDetail {

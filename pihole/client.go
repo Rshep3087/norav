@@ -85,6 +85,8 @@ func (ph *PiHConnector) Get(endpoint string) ([]byte, error) {
 	defer log.Printf("Fetched data from Pi-hole API: %s", endpoint)
 
 	var requestString = ph.Host + "/admin/api.php?" + endpoint
+	log.Printf("Requesting: %s", requestString)
+
 	if ph.Token != "" {
 		requestString += "&auth=" + ph.Token
 	}

@@ -1,6 +1,7 @@
 package pihole
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/charmbracelet/bubbles/table"
@@ -8,8 +9,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-func (m Model) Title() string       { return m.name }
-func (m Model) Description() string { return m.description }
+func (m *Model) Title() string       { return m.name }
+func (m *Model) Description() string { return fmt.Sprintf("%s - %s", m.healthStatus, m.description) }
 
 // fetchPiHoleStats fetches statistics from the Pi-hole instance
 func (m *Model) FetchPiHoleStats() tea.Msg {
@@ -23,7 +24,7 @@ func (m *Model) FetchPiHoleStats() tea.Msg {
 	return piHoleSummaryMsg{summary: stats}
 }
 
-func (m Model) Init() tea.Cmd {
+func (m *Model) Init() tea.Cmd {
 	return nil
 }
 
@@ -31,7 +32,7 @@ type piHoleSummaryMsg struct {
 	summary PiHSummary
 }
 
-func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var (
 		cmd  tea.Cmd
 		cmds []tea.Cmd
@@ -56,6 +57,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		log.Println("Updating Pi-hole status")
 		defer log.Println("Updated Pi-hole status")
 
+		log.Printf("Pi-hole status: %s", string(msg))
 		m.healthStatus = string(msg)
 	}
 
@@ -67,18 +69,19 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m Model) View() string {
+func (m *Model) View() string {
 	return m.table.View()
 }
 
 type piHoleStatusMsg string // "✅" or "❌"
 
-func (m Model) FilterValue() string { return m.name }
+func (m *Model) FilterValue() string { return m.name }
 
-func (m Model) FetchStatus() tea.Cmd {
+// FetchStatus fetches the status of the Pi-hole instance
+// and returns a message with the status.
+func (m *Model) FetchStatus() tea.Cmd {
 	return func() tea.Msg {
 		log.Println("Fetching Pi-hole status")
-		defer log.Println("Fetched Pi-hole status")
 		piHoleConnector := PiHConnector{
 			Host:  m.host,
 			Token: m.apiKey,
@@ -116,7 +119,7 @@ type Model struct {
 	table        table.Model
 }
 
-func NewApplication(cfg Config) Model {
+func NewApplication(cfg Config) *Model {
 	m := Model{
 		name:        "Pi-hole",
 		host:        cfg.Host,
@@ -146,5 +149,5 @@ func NewApplication(cfg Config) Model {
 		Bold(false)
 	m.table.SetStyles(s)
 
-	return m
+	return &m
 }

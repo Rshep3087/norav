@@ -110,12 +110,6 @@ func main() {
 		httpClient:          httpClient,
 		healthcheckInterval: time.Duration(cfg.HealthCheckInterval) * time.Second,
 		applicationList:     appList,
-		pihole: pihole.NewApplication(
-			pihole.Config{
-				Host:   "http://hp-ubuntu",
-				APIKey: "8bda4efbe21b7ea71d80fdf5eb8d4258cbc8ef1317e4eaa9f471ac6f4ca3b086",
-			},
-		),
 	}
 
 	initialModel.applicationList.Title = cfg.Title
