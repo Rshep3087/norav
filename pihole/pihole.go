@@ -8,23 +8,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type Config struct {
-	Host        string `toml:"host"`
-	Name        string `toml:"name"`
-	Description string `toml:"description"`
-	APIKey      string `toml:"apiKey"`
-}
 
-type Model struct {
-	name        string
-	host        string
-	apiKey      string
-	description string
-	// active is a flag to indicate if the application is active
-	active       bool
-	healthStatus string
-	table        table.Model
-}
 
 func (m Model) Title() string       { return m.name }
 func (m Model) Description() string { return m.description }
@@ -89,6 +73,50 @@ func (m Model) View() string {
 	return m.table.View()
 }
 
+
+type piHoleStatusMsg string // "✅" or "❌"
+
+func (m Model) FilterValue() string { return m.name }
+
+func (m Model) FetchStatus() tea.Cmd {
+	return func() tea.Msg {
+		log.Println("Fetching Pi-hole status")
+		defer log.Println("Fetched Pi-hole status")
+		piHoleConnector := PiHConnector{
+			Host:  m.host,
+			Token: m.apiKey,
+		}
+		var msg piHoleStatusMsg
+
+		_, err := piHoleConnector.Type()
+		if err != nil {
+			msg = "❌"
+		} else {
+			msg = "✅"
+		}
+
+		return msg
+	}
+}
+
+// SetActive sets the active flag
+func (a *Model) SetActive(b bool) { a.active = b }
+type Config struct {
+	Host        string `toml:"host"`
+	Name        string `toml:"name"`
+	Description string `toml:"description"`
+	APIKey      string `toml:"apiKey"`
+}
+type Model struct {
+	name        string
+	host        string
+	apiKey      string
+	description string
+	// active is a flag to indicate if the application is active
+	active       bool
+	healthStatus string
+	table        table.Model
+}
 func NewApplication(cfg Config) Model {
 	m := Model{
 		name:        "Pi-hole",
@@ -121,31 +149,3 @@ func NewApplication(cfg Config) Model {
 
 	return m
 }
-
-type piHoleStatusMsg string // "✅" or "❌"
-
-func (m Model) FilterValue() string { return m.name }
-
-func (m Model) FetchStatus() tea.Cmd {
-	return func() tea.Msg {
-		log.Println("Fetching Pi-hole status")
-		defer log.Println("Fetched Pi-hole status")
-		piHoleConnector := PiHConnector{
-			Host:  m.host,
-			Token: m.apiKey,
-		}
-		var msg piHoleStatusMsg
-
-		_, err := piHoleConnector.Type()
-		if err != nil {
-			msg = "❌"
-		} else {
-			msg = "✅"
-		}
-
-		return msg
-	}
-}
-
-// SetActive sets the active flag
-func (a *Model) SetActive(b bool) { a.active = b }
