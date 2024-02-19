@@ -16,20 +16,22 @@ type Config struct {
 }
 
 type Model struct {
+	name        string
+	host        string
+	apiKey      string
+	description string
 	// active is a flag to indicate if the application is active
 	active       bool
-	name         string
 	healthStatus string
 	table        table.Model
-	cfg          Config
 }
 
 // fetchPiHoleStats fetches statistics from the Pi-hole instance
 func (m *Model) FetchPiHoleStats() tea.Msg {
 	// Set up the Pi-hole connector with the URL and AuthKey from the config
 	piHoleConnector := PiHConnector{
-		Host:  m.cfg.Host,
-		Token: m.cfg.APIKey,
+		Host:  m.host,
+		Token: m.apiKey,
 	}
 	stats := piHoleConnector.Summary()
 
@@ -81,8 +83,11 @@ func (m Model) View() string {
 
 func NewApplication(cfg Config) Model {
 	m := Model{
-		cfg:    cfg,
-		active: false,
+		name:        "Pi-hole",
+		host:        cfg.Host,
+		apiKey:      cfg.APIKey,
+		description: "Network-wide ad blocking via your own Linux hardware",
+		active:      false,
 	}
 	columns := []table.Column{
 		{Title: "Metric", Width: 20},
