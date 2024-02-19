@@ -8,8 +8,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-
-
 func (m Model) Title() string       { return m.name }
 func (m Model) Description() string { return m.description }
 
@@ -73,7 +71,6 @@ func (m Model) View() string {
 	return m.table.View()
 }
 
-
 type piHoleStatusMsg string // "✅" or "❌"
 
 func (m Model) FilterValue() string { return m.name }
@@ -101,6 +98,7 @@ func (m Model) FetchStatus() tea.Cmd {
 
 // SetActive sets the active flag
 func (a *Model) SetActive(b bool) { a.active = b }
+
 type Config struct {
 	Host        string `toml:"host"`
 	Name        string `toml:"name"`
@@ -117,6 +115,7 @@ type Model struct {
 	healthStatus string
 	table        table.Model
 }
+
 func NewApplication(cfg Config) Model {
 	m := Model{
 		name:        "Pi-hole",
