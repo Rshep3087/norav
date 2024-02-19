@@ -73,13 +73,6 @@ func main() {
 		defer f.Close()
 	}
 
-	appList := list.New(
-		appsToItems(cfg.Applications),
-		list.NewDefaultDelegate(),
-		0,
-		0,
-	)
-
 	s := table.DefaultStyles()
 	s.Header = s.Header.
 		BorderStyle(lipgloss.NormalBorder()).
@@ -91,8 +84,25 @@ func main() {
 		Background(lipgloss.Color("57")).
 		Bold(false)
 
+	var apps []Application
+	if cfg.PiHole != nil {
+		piholeApp := pihole.NewApplication(*cfg.PiHole)
+		apps = append(apps, piholeApp)
+	}
+
+	var listItems []list.Item
+	for _, app := range apps {
+		listItems = append(listItems, app)
+	}
+
+	appList := list.New(
+		listItems,
+		list.NewDefaultDelegate(),
+		0,
+		0,
+	)
+
 	initialModel := model{
-		applications: cfg.Applications,
 		metadata: metadata{
 			title:  cfg.Title,
 			status: "loading...",

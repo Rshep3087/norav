@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -11,7 +10,6 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/rshep3087/norav/pihole"
-	"github.com/rshep3087/norav/sonarr"
 )
 
 type noravState int
@@ -58,7 +56,6 @@ type model struct {
 	// state is the current state of the application
 	state noravState
 	// applications is a list of applications to be monitored
-	applications    []application
 	applicationList list.Model
 
 	metadata metadata
@@ -96,6 +93,26 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 
+	case checkApplicationsMsg:
+		log.Println("received checkApplicationsMsg")
+
+		for _, item := range m.applicationList.Items() {
+			log.Printf("Checking %s", item.FilterValue())
+			defer log.Printf("Checked %s", item.FilterValue())
+			app, ok := item.(Application)
+			if !ok {
+				log.Printf("Item %s is not an application", item.FilterValue())
+				continue
+			}
+
+			cmd = app.FetchStatus()
+			cmds = append(cmds, cmd)
+		}
+
+		cmds = append(cmds, m.checkApplications(m.healthcheckInterval))
+
+		log.Println("Checked applications")
+
 	case tea.WindowSizeMsg:
 		h, v := docStyle.GetFrameSize()
 		m.applicationList.SetSize(msg.Width-h, msg.Height-v)
@@ -104,20 +121,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 
-	case SeriesResourceMsg:
-		m.showSonarrDetail = true
+	// case SeriesResourceMsg:
+	// 	m.showSonarrDetail = true
 
-		items := make([]list.Item, len(msg.SeriesResources))
-		for i := range msg.SeriesResources {
-			items[i] = &msg.SeriesResources[i]
-		}
+	// 	items := make([]list.Item, len(msg.SeriesResources))
+	// 	for i := range msg.SeriesResources {
+	// 		items[i] = &msg.SeriesResources[i]
+	// 	}
 
-		m.sonarrSeriesList = list.New(items, list.NewDefaultDelegate(), 0, 0)
+	// 	m.sonarrSeriesList = list.New(items, list.NewDefaultDelegate(), 0, 0)
 
-		h, v := docStyle.GetFrameSize()
-		m.sonarrSeriesList.SetSize(m.windowSize.Width-h, m.windowSize.Height-v)
+	// 	h, v := docStyle.GetFrameSize()
+	// 	m.sonarrSeriesList.SetSize(m.windowSize.Width-h, m.windowSize.Height-v)
 
-		return m, nil
+	// 	return m, nil
 
 	case tea.KeyMsg:
 		log.Printf("key pressed: %s", msg.String())
@@ -138,33 +155,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, m.pihole.FetchPiHoleStats
 			}
 
-			if m.applicationList.SelectedItem().FilterValue() == "Sonarr" {
-				return m, m.fetchSonarrSeries
-			}
+			// if m.applicationList.SelectedItem().FilterValue() == "Sonarr" {
+			// 	return m, m.fetchSonarrSeries
+			// }
 
 		case "esc":
 			m.state = StateNormal
 			return m, nil
 		}
 
-	case statusMsg:
-		m.metadata.status = "Looking good..."
-		for i, app := range m.applications {
-			m.applications[i].httpResp.status = msg[app.URL]
-			switch m.applications[i].httpResp.status {
-			case http.StatusOK:
-				// do nothing
-			default:
-				m.metadata.status = fmt.Sprintf("%s might be having issues...", app.Name)
-			}
-		}
-
-		cmd = m.applicationList.SetItems(appsToItems(m.applications))
-		cmds = append(cmds, cmd)
+		// cmd = m.applicationList.SetItems(appsToItems(m.applications))
+		// cmds = append(cmds, cmd)
 
 		cmd = m.checkApplications(m.healthcheckInterval)
 		cmds = append(cmds, cmd)
-
 	}
 
 	m.pihole, cmd = m.pihole.Update(msg)
@@ -230,21 +234,17 @@ func (m model) View() string {
 	b.WriteString(m.applicationsView())
 
 	// Check if all applications are good
-	allGood := true
-	for _, app := range m.applications {
-		if app.httpResp.status != http.StatusOK {
-			allGood = false
-			break
-		}
-	}
+	// allGood := true
+	// for _, app := range m.applications {
+	// 	if app.httpResp.status != http.StatusOK {
+	// 		allGood = false
+	// 		break
+	// 	}
+	// }
 
 	// Create status bar
 	var statusBar string
-	if allGood {
-		statusBar = statusBarStyle.Render("All good..")
-	} else {
-		statusBar = statusBarStyle.Render(m.metadata.status)
-	}
+	statusBar = statusBarStyle.Render("good for now")
 
 	// Append status bar to the view
 	b.WriteString("\n" + statusBar + "\n")
@@ -258,46 +258,24 @@ func (m *model) applicationsView() string {
 
 func (m *model) checkApplications(d time.Duration) tea.Cmd {
 	return tea.Tick(d, func(t time.Time) tea.Msg {
-		msg := make(statusMsg)
-
-		for _, app := range m.applications {
-			req, err := http.NewRequest("GET", app.URL, nil)
-			if err != nil {
-				msg[app.URL] = 0
-				continue
-			}
-
-			if app.AuthHeader != "" && app.AuthKey != "" {
-				req.Header.Add(app.AuthHeader, app.AuthKey)
-			}
-
-			res, err := m.httpClient.Do(req)
-			if err != nil {
-				log.Printf("Error fetching %s: %s", app.URL, err)
-				msg[app.URL] = 0
-				continue
-			}
-			if res.StatusCode != http.StatusOK {
-				log.Printf("Error fetching %s: %s", app.URL, res.Status)
-			}
-			msg[app.URL] = res.StatusCode
-		}
-		return msg
+		return checkApplicationsMsg{}
 	})
 }
 
-type SeriesResourceMsg sonarr.Series
+type checkApplicationsMsg struct{}
 
-// fetchSonarrSeries fetches the series from the Sonarr instance
-func (m *model) fetchSonarrSeries() tea.Msg {
-	sonarrCfg := m.applicationList.SelectedItem().(application)
+// type SeriesResourceMsg sonarr.Series
 
-	sonarrClient := sonarr.NewClient(sonarrCfg.URL, sonarrCfg.AuthKey)
-	series, err := sonarrClient.GetSeries()
-	if err != nil {
-		log.Printf("Error fetching series from Sonarr: %s", err)
-		return nil
-	}
+// // fetchSonarrSeries fetches the series from the Sonarr instance
+// func (m *model) fetchSonarrSeries() tea.Msg {
+// 	sonarrCfg := m.applicationList.SelectedItem().(application)
 
-	return SeriesResourceMsg(*series)
-}
+// 	sonarrClient := sonarr.NewClient(sonarrCfg.URL, sonarrCfg.AuthKey)
+// 	series, err := sonarrClient.GetSeries()
+// 	if err != nil {
+// 		log.Printf("Error fetching series from Sonarr: %s", err)
+// 		return nil
+// 	}
+
+// 	return SeriesResourceMsg(*series)
+// }

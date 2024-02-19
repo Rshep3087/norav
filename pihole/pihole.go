@@ -26,6 +26,9 @@ type Model struct {
 	table        table.Model
 }
 
+func (m Model) Title() string       { return m.name }
+func (m Model) Description() string { return m.description }
+
 // fetchPiHoleStats fetches statistics from the Pi-hole instance
 func (m *Model) FetchPiHoleStats() tea.Msg {
 	// Set up the Pi-hole connector with the URL and AuthKey from the config
@@ -33,7 +36,7 @@ func (m *Model) FetchPiHoleStats() tea.Msg {
 		Host:  m.host,
 		Token: m.apiKey,
 	}
-	stats := piHoleConnector.Summary()
+	stats, _ := piHoleConnector.Summary()
 
 	return piHoleSummaryMsg{summary: stats}
 }
@@ -65,8 +68,13 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		})
 
 		m.table.Focus()
-
 		return m, nil
+
+	case piHoleStatusMsg:
+		log.Println("Updating Pi-hole status")
+		defer log.Println("Updated Pi-hole status")
+
+		m.healthStatus = string(msg)
 	}
 
 	if m.active {
@@ -114,15 +122,30 @@ func NewApplication(cfg Config) Model {
 	return m
 }
 
-func (a *Model) HealthCheck() error {
+type piHoleStatusMsg string // "✅" or "❌"
 
-	a.healthStatus = "Looking good..."
+func (m Model) FilterValue() string { return m.name }
 
-	return nil
+func (m Model) FetchStatus() tea.Cmd {
+	return func() tea.Msg {
+		log.Println("Fetching Pi-hole status")
+		defer log.Println("Fetched Pi-hole status")
+		piHoleConnector := PiHConnector{
+			Host:  m.host,
+			Token: m.apiKey,
+		}
+		var msg piHoleStatusMsg
+
+		_, err := piHoleConnector.Type()
+		if err != nil {
+			msg = "❌"
+		} else {
+			msg = "✅"
+		}
+
+		return msg
+	}
 }
-
-func (a *Model) HealthStatus() string { return "" }
-func (a *Model) Name() string         { return a.name }
 
 // SetActive sets the active flag
 func (a *Model) SetActive(b bool) { a.active = b }

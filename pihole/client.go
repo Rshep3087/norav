@@ -80,7 +80,7 @@ type PiHQueries struct {
 }
 
 // Get performes API request. Returns slice of bytes.
-func (ph *PiHConnector) Get(endpoint string) []byte {
+func (ph *PiHConnector) Get(endpoint string) ([]byte, error) {
 	log.Printf("Fetching data from Pi-hole API: %s", endpoint)
 	defer log.Printf("Fetched data from Pi-hole API: %s", endpoint)
 
@@ -91,134 +91,165 @@ func (ph *PiHConnector) Get(endpoint string) []byte {
 
 	resp, err := http.Get(requestString)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
-	return body
+	return body, nil
 }
 
 // Type returns Pi-Hole API type as a PiHType object.
-func (ph *PiHConnector) Type() PiHType {
-	bs := ph.Get("type")
+func (ph *PiHConnector) Type() (PiHType, error) {
+	bs, err := ph.Get("type")
+	if err != nil {
+		return PiHType{}, err
+	}
 	s := &PiHType{}
 
-	err := json.Unmarshal(bs, s)
+	err = json.Unmarshal(bs, s)
 	if err != nil {
-		log.Fatal(err)
+		return PiHType{}, err
 	}
-	return *s
+	return *s, nil
 }
 
 // Version returns Pi-Hole API version as an object.
-func (ph *PiHConnector) Version() PiHVersion {
-	bs := ph.Get("version")
+func (ph *PiHConnector) Version() (PiHVersion, error) {
+	bs, err := ph.Get("version")
+	if err != nil {
+		return PiHVersion{}, err
+	}
 	s := &PiHVersion{}
 
-	err := json.Unmarshal(bs, s)
+	err = json.Unmarshal(bs, s)
 	if err != nil {
-		log.Fatal(err)
+		return PiHVersion{}, err
 	}
-	return *s
+	return *s, nil
 }
 
 // Summary returns statistics in formatted style.
-func (ph *PiHConnector) Summary() PiHSummary {
-	bs := ph.Get("summary")
+func (ph *PiHConnector) Summary() (PiHSummary, error) {
+	bs, err := ph.Get("summary")
+	if err != nil {
+		return PiHSummary{}, err
+	}
 
 	s := &PiHSummary{}
-	err := json.Unmarshal(bs, s)
+	err = json.Unmarshal(bs, s)
 	if err != nil {
-		log.Fatal(err)
+		return PiHSummary{}, err
 	}
-	return *s
+	return *s, nil
 }
 
 // TimeData returns PiHTimeData object which contains requests statistics.
-func (ph *PiHConnector) TimeData() PiHTimeData {
-	bs := ph.Get("overTimeData10mins")
+func (ph *PiHConnector) TimeData() (PiHTimeData, error) {
+	bs, err := ph.Get("overTimeData10mins")
+	if err != nil {
+		return PiHTimeData{}, err
+	}
+
 	s := &PiHTimeData{}
 
-	err := json.Unmarshal(bs, s)
+	err = json.Unmarshal(bs, s)
 	if err != nil {
-		log.Fatal(err)
+		return PiHTimeData{}, err
 	}
-	return *s
+	return *s, nil
 }
 
 // Top returns top blocked and requested domains.
-func (ph *PiHConnector) Top(n int) PiHTopItems {
-	bs := ph.Get("topItems=" + strconv.Itoa(n))
+func (ph *PiHConnector) Top(n int) (PiHTopItems, error) {
+	bs, err := ph.Get("topItems=" + strconv.Itoa(n))
+	if err != nil {
+		return PiHTopItems{}, err
+	}
 	s := &PiHTopItems{}
 
-	err := json.Unmarshal(bs, s)
+	err = json.Unmarshal(bs, s)
 	if err != nil {
-		log.Fatal(err)
+		return PiHTopItems{}, err
 	}
-	return *s
+	return *s, nil
 }
 
 // Clients returns top clients.
-func (ph *PiHConnector) Clients(n int) PiHTopClients {
-	bs := ph.Get("topClients=" + strconv.Itoa(n))
+func (ph *PiHConnector) Clients(n int) (PiHTopClients, error) {
+	bs, err := ph.Get("topClients=" + strconv.Itoa(n))
+	if err != nil {
+		return PiHTopClients{}, err
+	}
 	s := &PiHTopClients{}
 
-	err := json.Unmarshal(bs, s)
+	err = json.Unmarshal(bs, s)
 	if err != nil {
-		log.Fatal(err)
+		return PiHTopClients{}, err
 	}
-	return *s
+	return *s, nil
 }
 
 // ForwardDestinations returns forward destinations (DNS servers).
-func (ph *PiHConnector) ForwardDestinations() PiHForwardDestinations {
-	bs := ph.Get("getForwardDestinations")
+func (ph *PiHConnector) ForwardDestinations() (PiHForwardDestinations, error) {
+	bs, err := ph.Get("getForwardDestinations")
+	if err != nil {
+		return PiHForwardDestinations{}, err
+	}
 	s := &PiHForwardDestinations{}
 
-	err := json.Unmarshal(bs, s)
+	err = json.Unmarshal(bs, s)
 	if err != nil {
-		log.Fatal(err)
+		return PiHForwardDestinations{}, err
 	}
-	return *s
+	return *s, nil
 }
 
 // QueryTypes returns DNS query type and frequency as a PiHQueryTypes object.
-func (ph *PiHConnector) QueryTypes() PiHQueryTypes {
-	bs := ph.Get("getQueryTypes")
+func (ph *PiHConnector) QueryTypes() (PiHQueryTypes, error) {
+	bs, err := ph.Get("getQueryTypes")
+	if err != nil {
+		return PiHQueryTypes{}, err
+	}
 	s := &PiHQueryTypes{}
 
-	err := json.Unmarshal(bs, s)
+	err = json.Unmarshal(bs, s)
 	if err != nil {
-		log.Fatal(err)
+		return PiHQueryTypes{}, err
 	}
-	return *s
+	return *s, nil
 }
 
 // Queries returns all DNS queries as a PiHQueries object.
-func (ph *PiHConnector) Queries() PiHQueries {
-	bs := ph.Get("getAllQueries")
+func (ph *PiHConnector) Queries() (PiHQueries, error) {
+	bs, err := ph.Get("getAllQueries")
+	if err != nil {
+		return PiHQueries{}, err
+	}
 	s := &PiHQueries{}
 
-	err := json.Unmarshal(bs, s)
+	err = json.Unmarshal(bs, s)
 	if err != nil {
-		log.Fatal(err)
+		return PiHQueries{}, err
 	}
-	return *s
+	return *s, nil
 }
 
 // Enable enables Pi-Hole server.
 func (ph *PiHConnector) Enable() error {
-	bs := ph.Get("enable")
+	bs, err := ph.Get("enable")
+	if err != nil {
+		return err
+	}
 	resp := make(map[string]string)
 
-	err := json.Unmarshal(bs, &resp)
+	err = json.Unmarshal(bs, &resp)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	if resp["status"] != "enabled" {
@@ -229,24 +260,31 @@ func (ph *PiHConnector) Enable() error {
 
 // Disable disables Pi-Hole server permanently.
 func (ph *PiHConnector) Disable() error {
-	bs := ph.Get("disable")
+	bs, err := ph.Get("disable")
+	if err != nil {
+		return err
+	}
 	resp := make(map[string]string)
 
-	err := json.Unmarshal(bs, &resp)
+	err = json.Unmarshal(bs, &resp)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
 	if resp["status"] != "disabled" {
 		return errors.New("something went wrong")
 	}
+
 	return nil
 }
 
 // RecentBlocked returns string with the last blocked DNS record.
-func (ph *PiHConnector) RecentBlocked() string {
-	bs := ph.Get("recentBlocked")
-	return string(bs)
+func (ph *PiHConnector) RecentBlocked() (string, error) {
+	bs, err := ph.Get("recentBlocked")
+	if err != nil {
+		return "", err
+	}
+	return string(bs), nil
 }
 
 // Show returns 24h Summary of PiHole System.

@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/BurntSushi/toml"
+	"github.com/rshep3087/norav/pihole"
 )
 
 // config is a struct that holds norav configuration
@@ -12,7 +13,8 @@ type config struct {
 	// Title of your norav dashboard
 	Title string `toml:"title"`
 	// Applications is a list of applications to be monitored
-	Applications []application `toml:"applications"`
+	// Applications []application `toml:"applications"`
+	PiHole *pihole.Config `toml:"pihole"`
 	// HealthCheckInterval is the interval in seconds to check the health of the applications
 	HealthCheckInterval int `toml:"interval"`
 }
