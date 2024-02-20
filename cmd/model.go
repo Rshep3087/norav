@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"log"
@@ -24,20 +24,6 @@ const (
 
 var (
 	docStyle = lipgloss.NewStyle().Margin(1, 2)
-
-	detailHeaderStyle = lipgloss.NewStyle().
-				Bold(true).
-				Foreground(lipgloss.Color("#FAFAFA")).
-				Padding(0, 1).
-				Width(100)
-
-	detailDataStyle = lipgloss.NewStyle().
-			Bold(true).
-			Foreground(lipgloss.Color("#FAFAFA")).
-			PaddingTop(2).
-			PaddingLeft(2).
-			PaddingBottom(1).
-			Width(22)
 
 	titleStyle = lipgloss.NewStyle().
 			MarginBottom(1).
@@ -253,8 +239,7 @@ func (m model) View() string {
 	// }
 
 	// Create status bar
-	var statusBar string
-	statusBar = statusBarStyle.Render("good for now")
+	statusBar := statusBarStyle.Render("good for now")
 
 	// Append status bar to the view
 	b.WriteString("\n" + statusBar + "\n")

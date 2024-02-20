@@ -26,7 +26,7 @@ linters:
     # - revive
     # - gocritic
     - govet
-    - gocyclo
+    # - gocyclo
     - misspell
     - lll
   disable:

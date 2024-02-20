@@ -1,6 +1,6 @@
 # Default target
 norav: build
-	DEBUG=true ./norav
+	DEBUG=true ./norav -c .norav.toml
 
 # Build the Go project
 build:
